@@ -476,13 +476,22 @@ func (r *Row) GetValue(col string) interface{} {
 		return nil
 	}
 
+	if x, ok := r.rvals[i].([]byte); ok {
+		return string(x)
+	}
+
 	return r.rvals[i]
 }
 
 func (r *Row) GetValues() map[string]interface{} {
 	c := make(map[string]interface{}, len(r.rvals))
 	for k, i := range r.colMap {
-		c[k] = r.rvals[i]
+		if x, ok := r.rvals[i].([]byte); ok {
+			c[k] = string(x)
+		} else {
+			c[k] = r.rvals[i]
+		}
 	}
+
 	return c
 }
