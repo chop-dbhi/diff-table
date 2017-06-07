@@ -96,6 +96,7 @@ type TableDiff struct {
 	RowsChanged int                      `json:"rows_changed"`
 	RowDiffs    []*RowDiff               `json:"row_diffs,omitempty"`
 	NewRows     []map[string]interface{} `json:"new_rows,omitempty"`
+	DeletedRows []map[string]interface{} `json:"deleted_rows,omitempty"`
 }
 
 type ValueChange struct {
@@ -249,6 +250,14 @@ func Diff(t1, t2 *TableIterator, diffRows bool) (*TableDiff, error) {
 		if !ok2 {
 			diff.RowsDeleted++
 			n1 = true
+
+			if diffRows {
+				rkey := make(map[string]interface{}, len(t1.Key))
+				for _, kc := range t1.Key {
+					rkey[kc] = r1.GetValue(kc)
+				}
+				diff.DeletedRows = append(diff.DeletedRows, rkey)
+			}
 			continue
 		}
 
@@ -259,6 +268,14 @@ func Diff(t1, t2 *TableIterator, diffRows bool) (*TableDiff, error) {
 		if p == -1 {
 			diff.RowsDeleted++
 			n1 = true
+
+			if diffRows {
+				rkey := make(map[string]interface{}, len(t1.Key))
+				for _, kc := range t1.Key {
+					rkey[kc] = r1.GetValue(kc)
+				}
+				diff.DeletedRows = append(diff.DeletedRows, rkey)
+			}
 			continue
 		}
 
