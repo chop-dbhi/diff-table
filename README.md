@@ -1,6 +1,6 @@
 # diff-table
 
-A tool to compare two tables of data. Currently the tool only supports executing queries against a Postgres database, but there are plans to add more SQL drivers and flat file support.
+A tool to compare two tables of data. Currently the tool supported tables from Postgres and pre-sorted CSV files.
 
 The primary use case is to compare the output of a query executed at different points in time. For example, in a batch ETL process that runs every night, you can compare the previous batch with the new batch.
 
@@ -13,40 +13,6 @@ go get -u github.com/chop-dbhi/diff-table/cmd/diff-table
 ```
 
 ## Usage
-
-This is a minimum example which shows the required options.
-
-```
-diff-table \
-  -db postgres://localhost:5432/postgres \
-  -table1 data_v1 \
-  -table2 data_v2 \
-  -key id
-```
-
-Here are the full set of options.
-
-```
-Usage of diff-table:
-  -db string
-    	Database 1 connection URL.
-  -db2 string
-    	Database 2 connection URL. Defaults to db option.
-  -schema string
-    	Name of the first schema.
-  -schema2 string
-    	Name of the second schema. Defaults to schema option.
-  -table1 string
-    	Name of the first table.
-  -table2 string
-    	Name of the second table.
-  -key string
-    	Comma-separate list of columns representing the natural key of a record.
-  -diff
-    	Diff row values and output new rows and changes.
-```
-
-## Example
 
 ```
 diff-table \
@@ -89,4 +55,48 @@ The output is a JSON encoded value which various information about the table dif
 }
 ```
 
+## Examples
 
+Two tables in the same database.
+
+```
+diff-table \
+  -db postgres://localhost:5432/postgres \
+  -table1 data_v1 \
+  -table2 data_v2 \
+  -key id
+```
+
+Two tables from different servers/databases.
+
+```
+diff-table \
+  -db postgres://localhost:5432/postgres \
+  -db2 postgres://localhost:5435/other \
+  -table1 data_v1 \
+  -table2 data_v2 \
+  -key id
+```
+
+Two CSV files.
+
+*Note: at this time records must be pre-sorted by the key columns.*
+
+```
+diff-table \
+  -csv1 data_v1.csv \
+  -csv2 data_v2.csv  \
+  -key id
+```
+
+A CSV file and a database table (o.O).
+
+*Note: at this time records must be pre-sorted by the key columns.*
+
+```
+diff-table \
+  -csv1 data_v1.csv \
+  -db2 postgres://localhost:5432/postgres \
+  -table2 data_v2 \
+  -key id
+```
