@@ -129,8 +129,7 @@ func Diff(t1, t2 Table, diffRows bool) (*TableDiff, error) {
 	)
 
 	// Single references.
-	r1 := t1.Row()
-	r2 := t2.Row()
+	var r1, r2 Row
 
 	for {
 		// Advance to rows.
@@ -140,6 +139,8 @@ func Diff(t1, t2 Table, diffRows bool) (*TableDiff, error) {
 			if err != nil {
 				return nil, err
 			}
+
+			r1 = t1.Row()
 
 			// Set key.
 			if ok1 {
@@ -155,6 +156,8 @@ func Diff(t1, t2 Table, diffRows bool) (*TableDiff, error) {
 			if err != nil {
 				return nil, err
 			}
+
+			r2 = t2.Row()
 
 			// Set key.
 			if ok2 {
