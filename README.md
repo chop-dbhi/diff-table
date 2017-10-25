@@ -28,10 +28,6 @@ Usage of diff-table:
     	Database 1 connection URL.
   -db2 string
     	Database 2 connection URL. Defaults to db option.
-  -diff
-    	Diff row values and output new rows and changes.
-  -key string
-    	Required comma-separate list of columns.
   -schema string
     	Name of the first schema.
   -schema2 string
@@ -40,9 +36,13 @@ Usage of diff-table:
     	Name of the first table.
   -table2 string
     	Name of the second table.
+  -key string
+    	Comma-separate list of columns representing the natural key of a record.
+  -diff
+    	Diff row values and output new rows and changes.
 ```
 
-## Exampl
+## Example
 
 ```
 diff-table \
@@ -52,7 +52,7 @@ diff-table \
   -key id
 ```
 
-The output is a JSON encoded value which various information about the table differences. If `-diff` is supplied, the `row_diffs` and `new_rows` are tracked and outputed as well. Note, this may significantly increase memory usage if the tables are vastly different.
+The output is a JSON encoded value which various information about the table differences. If `-diff` is supplied, `row_diffs`, `new_rows`, and `deleted_rows` are included as well. Note, this may significantly increase memory usage if the tables are vastly different.
 
 ```
 {
