@@ -1,6 +1,6 @@
 PROG_NAME := "diff-table"
 IMAGE_NAME := "dbhi/diff-table"
-CMD_PATH := "."
+CMD_PATH := "./cmd/diff-table"
 
 GIT_SHA := $(shell git log -1 --pretty=format:"%h" .)
 GIT_TAG := $(shell git describe --tags --exact-match . 2>/dev/null)

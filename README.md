@@ -6,7 +6,11 @@ The primary use case is to compare the output of a query executed at different p
 
 ## Install
 
-Download a [release](https://github.com/chop-dbhi/diff-table/releases).
+Download a [release](https://github.com/chop-dbhi/diff-table/releases) or install from source:
+
+```
+go get -u github.com/chop-dbhi/diff-table/cmd/diff-table
+```
 
 ## Usage
 
