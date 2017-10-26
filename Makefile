@@ -11,23 +11,33 @@ build:
 	go build -ldflags "-X \"main.buildVersion=$(GIT_VERSION)\"" \
 		-o $(GOPATH)/bin/$(PROG_NAME) $(CMD_PATH)
 
-dist-build:
+dist-build-linux:
 	mkdir -p dist
 
-	gox -output="./dist/{{.OS}}-{{.Arch}}/$(PROG_NAME)" \
-		-ldflags "-X \"main.buildVersion=$(GIT_VERSION)\"" \
-		-os "windows linux darwin" \
-		-arch "amd64" $(CMD_PATH) > /dev/null
+	go build -ldflags "-extldflags \"-static\" -X \"main.buildVersion=$(GIT_VERSION)\"" \
+		-o ./dist/linux-amd64/$(PROG_NAME) $(CMD_PATH)
+
+dist-linux:
+	docker build -f Dockerfile.build -t dbhi/diff-table-builder .
+
+	docker run --rm -it \
+		-v ${PWD}:/go/src/github.com/chop-dbhi/diff-table \
+		dbhi/diff-table-builder
+
+dist-build: dist-linux
+	mkdir -p dist
+
+	go build -ldflags "-X \"main.buildVersion=$(GIT_VERSION)\"" \
+		-o ./dist/darwin-amd64/$(PROG_NAME) $(CMD_PATH)
 
 dist-zip:
 	cd dist && zip $(PROG_NAME)-darwin-amd64.zip darwin-amd64/*
 	cd dist && zip $(PROG_NAME)-linux-amd64.zip linux-amd64/*
-	cd dist && zip $(PROG_NAME)-windows-amd64.zip windows-amd64/*
 
 dist: dist-build dist-zip
 
 docker:
-	docker build -t ${IMAGE_NAME}:${GIT_SHA} .
+	docker build -v .:/go/src/gitub.com/chop-dbhi/diff-table -t ${IMAGE_NAME}:${GIT_SHA} .
 	docker tag ${IMAGE_NAME}:${GIT_SHA} ${IMAGE_NAME}:${GIT_BRANCH}
 	if [ -n "${GIT_TAG}" ] ; then \
 		docker tag ${IMAGE_NAME}:${GIT_SHA} ${IMAGE_NAME}:${GIT_TAG} ; \

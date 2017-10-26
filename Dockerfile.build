@@ -1,0 +1,7 @@
+FROM golang:1.9
+ADD build.sh /
+
+ENV CGO_ENABLED=1
+ENV ROOT=/go/src/github.com/chop-dbhi/diff-table
+
+ENTRYPOINT ["/build.sh"]

@@ -23,9 +23,11 @@ func main() {
 
 		csv1      string
 		csv1delim string
+		csv1sort  bool
 
 		csv2      string
 		csv2delim string
+		csv2sort  bool
 
 		url1    string
 		schema1 string
@@ -41,9 +43,11 @@ func main() {
 
 	flag.StringVar(&csv1, "csv1", "", "Path to CSV file.")
 	flag.StringVar(&csv1delim, "csv1.delim", ",", "CSV delimiter.")
+	flag.BoolVar(&csv1sort, "csv1.sort", false, "CSV requires sorting.")
 
 	flag.StringVar(&csv2, "csv2", "", "Path to CSV file.")
 	flag.StringVar(&csv2delim, "csv2.delim", ",", "CSV delimiter.")
+	flag.BoolVar(&csv2sort, "csv2.sort", false, "CSV requires sorting.")
 
 	flag.StringVar(&url1, "db", "", "Database 1 connection URL.")
 	flag.StringVar(&schema1, "schema", "", "Name of the first schema.")
@@ -71,8 +75,9 @@ func main() {
 	}
 
 	var (
-		t1, t2 difftable.Table
-		err    error
+		t1, t2   difftable.Table
+		db1, db2 *sql.DB
+		err      error
 	)
 
 	if csv1 != "" && url1 != "" {
@@ -100,10 +105,21 @@ func main() {
 		cr1.TrimLeadingSpace = true
 		cr1.ReuseRecord = true
 
-		t1, err = difftable.CSVTable(cr1, key)
-		if err != nil {
-			log.Printf("csv1 table: %s", err)
-			return
+		if csv1sort {
+			table1 = "results"
+			db1, err = difftable.CsvDB(cr1, table1, key)
+			if err != nil {
+				log.Printf("csv1 table: %s", err)
+				return
+			}
+			defer db1.Close()
+			table1 = "results"
+		} else {
+			t1, err = difftable.CSVTable(cr1, key)
+			if err != nil {
+				log.Printf("csv1 table: %s", err)
+				return
+			}
 		}
 	}
 
@@ -122,22 +138,34 @@ func main() {
 		cr2.TrimLeadingSpace = true
 		cr2.ReuseRecord = true
 
-		t2, err = difftable.CSVTable(cr2, key)
-		if err != nil {
-			log.Printf("csv2 table: %s", err)
-			return
+		if csv2sort {
+			table2 = "results"
+			db2, err = difftable.CsvDB(cr2, table2, key)
+			if err != nil {
+				log.Printf("csv2 table: %s", err)
+				return
+			}
+			defer db2.Close()
+		} else {
+			t2, err = difftable.CSVTable(cr2, key)
+			if err != nil {
+				log.Printf("csv2 table: %s", err)
+				return
+			}
 		}
 	}
 
 	if url1 != "" {
 		// TODO: remove hard-coded postgres dependency
-		db1, err := sql.Open("postgres", url1)
+		db1, err = sql.Open("postgres", url1)
 		if err != nil {
 			log.Printf("db1 open: %s", err)
 			return
 		}
 		defer db1.Close()
+	}
 
+	if db1 != nil {
 		rows1, err := runQuery(db1, schema1, table1, key)
 		if err != nil {
 			log.Printf("db1 query: %s", err)
@@ -153,13 +181,15 @@ func main() {
 	}
 
 	if url2 != "" {
-		db2, err := sql.Open("postgres", url2)
+		db2, err = sql.Open("postgres", url2)
 		if err != nil {
 			log.Printf("db2 open: %s", err)
 			return
 		}
 		defer db2.Close()
+	}
 
+	if db2 != nil {
 		rows2, err := runQuery(db2, schema2, table2, key)
 		if err != nil {
 			log.Printf("db2 query: %s", err)
