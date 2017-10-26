@@ -1,6 +1,6 @@
 # diff-table
 
-A tool to compare two tables of data. Currently the tool supported tables from Postgres and pre-sorted CSV files.
+A tool to compare two tables of data. Currently the tool supported tables from Postgres and CSV files.
 
 The primary use case is to compare the output of a query executed at different points in time. For example, in a batch ETL process that runs every night, you can compare the previous batch with the new batch.
 
@@ -80,7 +80,7 @@ diff-table \
 
 Two CSV files.
 
-*Note: at this time records must be pre-sorted by the key columns.*
+*Note: this assumes the CSV files are pre-sorted by the specified key columns.*
 
 ```
 diff-table \
@@ -89,9 +89,20 @@ diff-table \
   -key id
 ```
 
+Two unsorted CSV files.
+
+```
+diff-table \
+  -csv1 data_v1.csv \
+  -csv1.sort \
+  -csv2 data_v2.csv  \
+  -csv2.sort \
+  -key id
+```
+
 A CSV file and a database table (o.O).
 
-*Note: at this time records must be pre-sorted by the key columns.*
+*Note: this assumes the CSV file is pre-sorted by the specified key columns.*
 
 ```
 diff-table \
