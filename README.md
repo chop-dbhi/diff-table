@@ -57,7 +57,7 @@ The output is a JSON encoded value which various information about the table dif
 
 ## Examples
 
-Two tables in the same database.
+### Tables in the same database
 
 ```
 diff-table \
@@ -67,7 +67,7 @@ diff-table \
   -key id
 ```
 
-Two tables from different servers/databases.
+### Tables from different servers/databases
 
 ```
 diff-table \
@@ -78,7 +78,7 @@ diff-table \
   -key id
 ```
 
-Two CSV files.
+### CSV files
 
 *Note: this assumes the CSV files are pre-sorted by the specified key columns.*
 
@@ -89,7 +89,7 @@ diff-table \
   -key id
 ```
 
-Two unsorted CSV files.
+### Unsorted CSV files
 
 ```
 diff-table \
@@ -100,7 +100,7 @@ diff-table \
   -key id
 ```
 
-A CSV file and a database table (o.O).
+### CSV file and database table (o.O)
 
 *Note: this assumes the CSV file is pre-sorted by the specified key columns.*
 
