@@ -37,7 +37,7 @@ dist-zip:
 dist: dist-build dist-zip
 
 docker:
-	docker build -v .:/go/src/gitub.com/chop-dbhi/diff-table -t ${IMAGE_NAME}:${GIT_SHA} .
+	docker build -t ${IMAGE_NAME}:${GIT_SHA} .
 	docker tag ${IMAGE_NAME}:${GIT_SHA} ${IMAGE_NAME}:${GIT_BRANCH}
 	if [ -n "${GIT_TAG}" ] ; then \
 		docker tag ${IMAGE_NAME}:${GIT_SHA} ${IMAGE_NAME}:${GIT_TAG} ; \
