@@ -106,14 +106,11 @@ func main() {
 		cr1.ReuseRecord = true
 
 		if csv1sort {
-			table1 = "results"
-			db1, err = difftable.CsvDB(cr1, table1, key)
+			t1, err = difftable.UnsortedCSVTable(cr1, key)
 			if err != nil {
 				log.Printf("csv1 table: %s", err)
 				return
 			}
-			defer db1.Close()
-			table1 = "results"
 		} else {
 			t1, err = difftable.CSVTable(cr1, key)
 			if err != nil {
@@ -139,13 +136,11 @@ func main() {
 		cr2.ReuseRecord = true
 
 		if csv2sort {
-			table2 = "results"
-			db2, err = difftable.CsvDB(cr2, table2, key)
+			t2, err = difftable.UnsortedCSVTable(cr2, key)
 			if err != nil {
 				log.Printf("csv2 table: %s", err)
 				return
 			}
-			defer db2.Close()
 		} else {
 			t2, err = difftable.CSVTable(cr2, key)
 			if err != nil {

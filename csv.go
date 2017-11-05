@@ -79,6 +79,8 @@ func (t *csvTable) Next() (bool, error) {
 }
 
 type csvRow struct {
+	// Unused by unsorted CSV table.
+	key    string
 	colMap map[string]int
 	row    []string
 }

@@ -1,127 +1,126 @@
 package difftable
 
 import (
-	"database/sql"
 	"encoding/csv"
 	"fmt"
 	"io"
+	"sort"
 	"strings"
-
-	_ "github.com/mattn/go-sqlite3"
 )
 
-const (
-	indexName = "results_key_index"
-)
+// csvRows implements sort.Interface.
+type csvRows []*csvRow
 
-func newDb(cr *csv.Reader, table string, head, key []string) (*sql.DB, error) {
-	db, err := sql.Open("sqlite3", ":memory:")
+func (r csvRows) Swap(i, j int) {
+	r[i], r[j] = r[i], r[j]
+}
+
+func (r csvRows) Len() int {
+	return len(r)
+}
+
+func (r csvRows) Less(i, j int) bool {
+	return strings.Compare(r[i].key, r[j].key) == -1
+}
+
+func UnsortedCSVTable(cr *csv.Reader, key []string) (Table, error) {
+	cols, err := cr.Read()
 	if err != nil {
 		return nil, err
 	}
 
-	cols := make([]string, len(head))
+	// Create map of column name to index in the array.
+	colMap := make(map[string]int, len(cols))
+	colTypes := make(map[string]string, len(cols))
 
-	for i, col := range head {
-		cols[i] = fmt.Sprintf("`%s` TEXT", col)
+	for i, c := range cols {
+		colMap[c] = i
+		colTypes[c] = "string"
 	}
 
-	keyCols := make([]string, len(key))
-	for i, col := range key {
-		keyCols[i] = fmt.Sprintf("`%s`", col)
+	keyIdx := make([]int, len(key))
+	for i, k := range key {
+		keyIdx[i] = colMap[k]
 	}
 
-	stmts := []string{
-		fmt.Sprintf(`CREATE TABLE %s (%s)`, table, strings.Join(cols, ",\n")),
-		fmt.Sprintf(`CREATE INDEX %s ON %s (%s)`, indexName, table, strings.Join(keyCols, ",")),
-	}
-
-	for _, stmt := range stmts {
-		if _, err = db.Exec(stmt); err != nil {
-			db.Close()
-			return nil, err
+	makeKey := func(r []string) string {
+		k := make([]string, len(r))
+		for i, x := range keyIdx {
+			k[i] = r[x]
 		}
+		return strings.Join(k, "|")
 	}
 
-	return db, nil
-}
-
-func insertStmt(table string, head []string) string {
-	header := make([]string, len(head))
-	for i, c := range head {
-		header[i] = fmt.Sprintf("`%s`", c)
-	}
-
-	params := make([]string, len(head))
-
-	for i, _ := range params {
-		params[i] = "?"
-	}
-
-	return fmt.Sprintf(`
-		INSERT INTO %s (%s)
-		VALUES (%s)
-	`, table, strings.Join(header, ","), strings.Join(params, ","))
-}
-
-func CsvDB(cr *csv.Reader, table string, key []string) (*sql.DB, error) {
-	head, err := cr.Read()
-	if err != nil {
-		return nil, err
-	}
-
-	db, err := newDb(cr, table, head, key)
-	if err != nil {
-		return nil, err
-	}
-
-	tx, err := db.Begin()
-	if err != nil {
-		db.Close()
-		return nil, err
-	}
-	defer tx.Rollback()
-
-	sql := insertStmt(table, head)
-	stmt, err := tx.Prepare(sql)
-	if err != nil {
-		db.Close()
-		return nil, err
-	}
-
-	vals := make([]interface{}, len(head))
-
+	var rows csvRows
 	for {
-		row, err := cr.Read()
+		r, err := cr.Read()
 		if err != nil {
 			if err == io.EOF {
 				break
 			}
-
-			stmt.Close()
-			tx.Rollback()
-			db.Close()
 			return nil, err
 		}
 
-		for i, s := range row {
-			vals[i] = s
-		}
-
-		if _, err := stmt.Exec(vals...); err != nil {
-			stmt.Close()
-			tx.Rollback()
-			db.Close()
-			return nil, err
-		}
+		rows = append(rows, &csvRow{
+			key: makeKey(r),
+			row: r,
+		})
 	}
 
-	stmt.Close()
+	sort.Sort(rows)
 
-	if err := tx.Commit(); err != nil {
-		db.Close()
-		return nil, err
+	return &unsortedCsvTable{
+		rows:     rows,
+		len:      len(rows),
+		key:      key,
+		colLen:   len(cols),
+		colMap:   colMap,
+		colTypes: colTypes,
+	}, nil
+}
+
+type unsortedCsvTable struct {
+	rows csvRows
+	len  int
+	idx  int
+
+	key []string
+
+	colLen   int
+	colMap   map[string]int
+	colTypes map[string]string
+
+	row *csvRow
+}
+
+func (t *unsortedCsvTable) Key() []string {
+	return t.key
+}
+
+func (t *unsortedCsvTable) Cols() map[string]string {
+	return t.colTypes
+}
+
+func (t *unsortedCsvTable) Row() Row {
+	return t.row
+}
+
+func (t *unsortedCsvTable) Next() (bool, error) {
+	t.row = nil
+
+	// No more.
+	if t.idx == t.len {
+		return false, nil
 	}
 
-	return db, nil
+	row := t.rows[t.idx]
+
+	if len(row.row) != t.colLen {
+		return false, fmt.Errorf("expected %d columns, got %d", t.colLen, len(row.row))
+	}
+
+	t.row = row
+	t.idx++
+
+	return true, nil
 }
