@@ -115,31 +115,45 @@ func DiffEvents(t1, t2 Table, h func(e *Event)) error {
 	cols1 := t1.Cols()
 	cols2 := t2.Cols()
 
-	// For lookup.
-	keyMap := make(map[string]struct{}, len(key1))
+	// Build lookups for key columns.
+	// Validate both tables have the key columns.
+	key1Map := make(map[string]struct{}, len(key1))
 	for _, c := range key1 {
-		// Validate both tables have the key columns.
 		if _, ok := cols1[c]; !ok {
 			return fmt.Errorf("table 1 does not have key column `%s`", c)
 		}
+		key1Map[c] = struct{}{}
+	}
+
+	key2Map := make(map[string]struct{}, len(key2))
+	for _, c := range key2 {
 		if _, ok := cols2[c]; !ok {
 			return fmt.Errorf("table 2 does not have key column `%s`", c)
 		}
-
-		keyMap[c] = struct{}{}
+		key2Map[c] = struct{}{}
 	}
 
 	// Columns to check when comparing rows.
-	var cmpcols []string
+	var (
+		cmpCols  []string
+		dropCols []string
+		newCols  []string
+	)
 
 	for c, ty1 := range cols1 {
+		// Ignore key columns.
+		if _, ok := key1Map[c]; ok {
+			continue
+		}
+
 		// Both exist check for type changes.
 		if ty2, ok := cols2[c]; ok {
-			// Add shared column.
-			if _, ok := keyMap[c]; !ok {
-				cmpcols = append(cmpcols, c)
+			// Not a key column in 2. Add as shared column.
+			if _, ok := key2Map[c]; !ok {
+				cmpCols = append(cmpCols, c)
 			}
 
+			// Emit the type difference.
 			if ty1 != ty2 {
 				h(&Event{
 					Type:    EventColumnChanged,
@@ -147,31 +161,30 @@ func DiffEvents(t1, t2 Table, h func(e *Event)) error {
 					OldType: ty1,
 					NewType: ty2,
 				})
-				continue
 			}
 
-			continue
-		}
+			// Does not exist in new cols. Mark as dropped.
+		} else {
+			dropCols = append(dropCols, c)
 
-		// Add dropped column.
-		if _, ok := keyMap[c]; !ok {
-			cmpcols = append(cmpcols, c)
-		}
+			h(&Event{
+				Type:   EventColumnRemoved,
+				Column: c,
+			})
 
-		// Column doesn't exist in t2, thus is was dropped.
-		h(&Event{
-			Type:   EventColumnRemoved,
-			Column: c,
-		})
+		}
 	}
 
 	// Check for new columns.
 	for c := range cols2 {
+		// Ignore key columns.
+		if _, ok := key2Map[c]; ok {
+			continue
+		}
+
+		// New column.
 		if _, ok := cols1[c]; !ok {
-			// Add new column.
-			if _, ok := keyMap[c]; !ok {
-				cmpcols = append(cmpcols, c)
-			}
+			newCols = append(newCols, c)
 
 			h(&Event{
 				Type:   EventColumnAdded,
@@ -296,36 +309,41 @@ func DiffEvents(t1, t2 Table, h func(e *Event)) error {
 			continue
 		}
 
-		if len(cmpcols) > 0 {
-			var rd *RowDiff
+		// Records have the same key. Compare the column-level values.
+		changes := make(map[string]*ValueChange)
 
-			// Row keys match, compare column values.
-			for _, c := range cmpcols {
-				if !bytes.Equal(r1.Bytes(c), r2.Bytes(c)) {
-					// Initialze row diff.
-					if rd == nil {
-						rd = &RowDiff{
-							Key:     newKeyMap(r1, key1),
-							Changes: make(map[string]*ValueChange),
-						}
-					}
-
-					rd.Changes[c] = &ValueChange{
-						Old: r1.Value(c),
-						New: r2.Value(c),
-					}
+		for _, c := range cmpCols {
+			if !bytes.Equal(r1.Bytes(c), r2.Bytes(c)) {
+				changes[c] = &ValueChange{
+					Old: r1.Value(c),
+					New: r2.Value(c),
 				}
 			}
+		}
 
-			if rd != nil {
-				h(&Event{
-					Type:    EventRowChanged,
-					Offset:  offset,
-					Key:     rd.Key,
-					Changes: rd.Changes,
-				})
-
+		// Columns that have been dropped.
+		for _, c := range dropCols {
+			changes[c] = &ValueChange{
+				Old: r1.Value(c),
+				New: nil,
 			}
+		}
+
+		// Columns that are new, just set the changes.
+		for _, c := range newCols {
+			changes[c] = &ValueChange{
+				Old: nil,
+				New: r2.Value(c),
+			}
+		}
+
+		if len(changes) > 0 {
+			h(&Event{
+				Type:    EventRowChanged,
+				Offset:  offset,
+				Key:     newKeyMap(r1, key1),
+				Changes: changes,
+			})
 		}
 
 		// Advance both.
