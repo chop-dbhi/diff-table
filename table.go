@@ -319,10 +319,14 @@ func DiffEvents(t1, t2 Table, h func(e *Event)) error {
 // Diff takes two tables and diffs them. If diffRows is true, value-level changes
 // will be reported as well.
 func Diff(t1, t2 Table, diffRows bool) (*TableDiff, error) {
+	// Initial empty values for proper JSON encoding..
 	diff := TableDiff{
 		ColsAdded:   make([]string, 0),
 		ColsDropped: make([]string, 0),
 		TypeChanges: make(map[string]*TypeChange),
+		RowDiffs:    make([]*RowDiff, 0),
+		NewRows:     make([]map[string]interface{}, 0),
+		DeletedRows: make([]map[string]interface{}, 0),
 	}
 
 	err := DiffEvents(t1, t2, func(e *Event) {
