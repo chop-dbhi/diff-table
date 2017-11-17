@@ -59,16 +59,31 @@ diff-table \
   "type_changes": {},
   "rows_added": 1,
   "rows_deleted": 1,
-  "rows_changed": 1,
+  "rows_changed": 2,
   "row_diffs": [
     {
       "key": {
         "id": "1"
       },
       "changes": {
+        "city": {
+          "old": null,
+          "new": "Trenton"
+        },
         "color": {
           "old": "Blue",
           "new": "Teal"
+        }
+      }
+    },
+    {
+      "key": {
+        "id": "3"
+      },
+      "changes": {
+        "city": {
+          "old": null,
+          "new": "Philadelphia"
         }
       }
     }
@@ -102,7 +117,7 @@ diff-table \
 
 The output is a newline-delimited set of JSON-encoded events. Column-based changes will always come first. The `type` field denotes the type of event which can be switched on during consumption.
 
-```jsons
+```json
 {
   "type": "column-added",
   "column": "city"
@@ -114,6 +129,10 @@ The output is a newline-delimited set of JSON-encoded events. Column-based chang
     "id": "1"
   },
   "changes": {
+    "city": {
+      "old": null,
+      "new": "Trenton"
+    },
     "color": {
       "old": "Blue",
       "new": "Teal"
@@ -125,6 +144,19 @@ The output is a newline-delimited set of JSON-encoded events. Column-based chang
   "offset": 2,
   "key": {
     "id": "2"
+  }
+}
+{
+  "type": "row-changed",
+  "offset": 3,
+  "key": {
+    "id": "3"
+  },
+  "changes": {
+    "city": {
+      "old": null,
+      "new": "Philadelphia"
+    }
   }
 }
 {
