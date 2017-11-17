@@ -15,7 +15,8 @@ import (
 
 func main() {
 	var (
-		keyList  string
+		key1List string
+		key2List string
 		diffRows bool
 
 		csv1      string
@@ -37,7 +38,8 @@ func main() {
 		events bool
 	)
 
-	flag.StringVar(&keyList, "key", "", "Required comma-separate list of columns.")
+	flag.StringVar(&key1List, "key", "", "Comma-separate list of columns in table 1.")
+	flag.StringVar(&key2List, "key2", "", "Comma-separate list of columns in table 2. Default to key option.")
 	flag.BoolVar(&diffRows, "diff", false, "Diff row values and output changes.")
 
 	flag.StringVar(&csv1, "csv1", "", "Path to CSV file.")
@@ -60,12 +62,23 @@ func main() {
 
 	flag.Parse()
 
-	if keyList == "" {
-		log.Print("key list required")
+	if key1List == "" {
+		log.Fatal("key required")
 		return
 	}
 
-	key := strings.Split(keyList, ",")
+	key1 := strings.Split(key1List, ",")
+	var key2 []string
+
+	if key2List == "" {
+		key2 = key1
+	} else {
+		key2 = strings.Split(key2List, ",")
+	}
+
+	if len(key1) != len(key2) {
+		log.Fatal("keys must be the same length")
+	}
 
 	if url2 == "" {
 		url2 = url1
@@ -82,12 +95,12 @@ func main() {
 	)
 
 	if csv1 != "" && url1 != "" {
-		log.Print("can't both a csv and db source defined")
+		log.Fatal("can't both a csv and db source defined")
 		return
 	}
 
 	if csv2 != "" && url2 != "" {
-		log.Print("can't both a csv and db target defined")
+		log.Fatal("can't both a csv and db target defined")
 		return
 	}
 
@@ -102,13 +115,13 @@ func main() {
 		cr1 := difftable.NewCSVReader(f1, rune(csv1delim[0]))
 
 		if csv1sort {
-			t1, err = difftable.UnsortedCSVTable(cr1, key)
+			t1, err = difftable.UnsortedCSVTable(cr1, key1)
 			if err != nil {
 				log.Printf("csv1 table: %s", err)
 				return
 			}
 		} else {
-			t1, err = difftable.CSVTable(cr1, key)
+			t1, err = difftable.CSVTable(cr1, key1)
 			if err != nil {
 				log.Printf("csv1 table: %s", err)
 				return
@@ -127,13 +140,13 @@ func main() {
 		cr2 := difftable.NewCSVReader(f2, rune(csv2delim[0]))
 
 		if csv2sort {
-			t2, err = difftable.UnsortedCSVTable(cr2, key)
+			t2, err = difftable.UnsortedCSVTable(cr2, key2)
 			if err != nil {
 				log.Printf("csv2 table: %s", err)
 				return
 			}
 		} else {
-			t2, err = difftable.CSVTable(cr2, key)
+			t2, err = difftable.CSVTable(cr2, key2)
 			if err != nil {
 				log.Printf("csv2 table: %s", err)
 				return
@@ -152,14 +165,15 @@ func main() {
 	}
 
 	if db1 != nil {
-		rows1, err := runQuery(db1, schema1, table1, key)
+		rows1, err := runQuery(db1, schema1, table1, key1)
 		if err != nil {
+			db1.Close()
 			log.Printf("db1 query: %s", err)
 			return
 		}
 		defer rows1.Close()
 
-		t1, err = difftable.SQLTable(rows1, key)
+		t1, err = difftable.SQLTable(rows1, key1)
 		if err != nil {
 			log.Printf("db1 table: %s", err)
 			return
@@ -176,14 +190,15 @@ func main() {
 	}
 
 	if db2 != nil {
-		rows2, err := runQuery(db2, schema2, table2, key)
+		rows2, err := runQuery(db2, schema2, table2, key2)
 		if err != nil {
+			db2.Close()
 			log.Printf("db2 query: %s", err)
 			return
 		}
 		defer rows2.Close()
 
-		t2, err = difftable.SQLTable(rows2, key)
+		t2, err = difftable.SQLTable(rows2, key2)
 		if err != nil {
 			log.Printf("db2 table: %s", err)
 			return
