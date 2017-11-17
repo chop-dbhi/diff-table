@@ -12,7 +12,7 @@ import (
 type csvRows []*csvRow
 
 func (r csvRows) Swap(i, j int) {
-	r[i], r[j] = r[i], r[j]
+	r[i], r[j] = r[j], r[i]
 }
 
 func (r csvRows) Len() int {
@@ -21,6 +21,12 @@ func (r csvRows) Len() int {
 
 func (r csvRows) Less(i, j int) bool {
 	return strings.Compare(r[i].key, r[j].key) == -1
+}
+
+func copySlice(s []string) []string {
+	c := make([]string, len(s))
+	copy(c, s)
+	return c
 }
 
 func UnsortedCSVTable(cr *csv.Reader, key []string) (Table, error) {
@@ -38,13 +44,14 @@ func UnsortedCSVTable(cr *csv.Reader, key []string) (Table, error) {
 		colTypes[c] = "string"
 	}
 
-	keyIdx := make([]int, len(key))
+	keyLen := len(key)
+	keyIdx := make([]int, keyLen)
 	for i, k := range key {
 		keyIdx[i] = colMap[k]
 	}
 
 	makeKey := func(r []string) string {
-		k := make([]string, len(r))
+		k := make([]string, keyLen)
 		for i, x := range keyIdx {
 			k[i] = r[x]
 		}
@@ -62,8 +69,9 @@ func UnsortedCSVTable(cr *csv.Reader, key []string) (Table, error) {
 		}
 
 		rows = append(rows, &csvRow{
-			key: makeKey(r),
-			row: r,
+			colMap: colMap,
+			key:    makeKey(r),
+			row:    copySlice(r),
 		})
 	}
 
@@ -106,8 +114,6 @@ func (t *unsortedCsvTable) Row() Row {
 }
 
 func (t *unsortedCsvTable) Next() (bool, error) {
-	t.row = nil
-
 	// No more.
 	if t.idx == t.len {
 		return false, nil
