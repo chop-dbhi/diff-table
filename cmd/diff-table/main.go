@@ -1,13 +1,10 @@
 package main
 
 import (
-	"bytes"
 	"database/sql"
-	"encoding/csv"
 	"encoding/json"
 	"flag"
 	"fmt"
-	"io"
 	"log"
 	"os"
 	"strings"
@@ -36,6 +33,8 @@ func main() {
 		url2    string
 		schema2 string
 		table2  string
+
+		events bool
 	)
 
 	flag.StringVar(&keyList, "key", "", "Required comma-separate list of columns.")
@@ -56,6 +55,8 @@ func main() {
 	flag.StringVar(&url2, "db2", "", "Database 2 connection URL. Defaults to db option.")
 	flag.StringVar(&schema2, "schema2", "", "Name of the second schema. Default to schema option.")
 	flag.StringVar(&table2, "table2", "", "Name of the second table.")
+
+	flag.BoolVar(&events, "events", false, "Write an event stream to stdout.")
 
 	flag.Parse()
 
@@ -189,18 +190,27 @@ func main() {
 		}
 	}
 
-	diff, err := difftable.Diff(t1, t2, diffRows)
-	if err != nil {
-		log.Printf("diff: %s", err)
-		return
-	}
-
 	enc := json.NewEncoder(os.Stdout)
-	enc.SetIndent("", "  ")
 
-	if err := enc.Encode(diff); err != nil {
-		log.Printf("json: %s", err)
-		return
+	if events {
+		err := difftable.DiffEvents(t1, t2, func(e *difftable.Event) {
+			enc.Encode(e)
+		})
+		if err != nil {
+			log.Printf("diff stream: %s", err)
+			return
+		}
+	} else {
+		diff, err := difftable.Diff(t1, t2, diffRows)
+		if err != nil {
+			log.Printf("diff: %s", err)
+			return
+		}
+
+		if err := enc.Encode(diff); err != nil {
+			log.Printf("json: %s", err)
+			return
+		}
 	}
 }
 
