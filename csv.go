@@ -1,10 +1,54 @@
 package difftable
 
 import (
+	"bytes"
 	"encoding/csv"
 	"fmt"
 	"io"
 )
+
+var bom = []byte{0xef, 0xbb, 0xbf}
+
+// uniReader wraps an io.Reader to replace carriage returns with newlines.
+// This is used with the csv.Reader so it can properly delimit lines.
+type uniReader struct {
+	r io.Reader
+}
+
+func (r *uniReader) Read(buf []byte) (int, error) {
+	n, err := r.r.Read(buf)
+
+	// Detect and remove BOM.
+	if bytes.HasPrefix(buf, bom) {
+		copy(buf, buf[len(bom):])
+		n -= len(bom)
+	}
+
+	// Replace carriage returns with newlines
+	for i, b := range buf {
+		if b == '\r' {
+			buf[i] = '\n'
+		}
+	}
+
+	return n, err
+}
+
+func (r *uniReader) Close() error {
+	if rc, ok := r.r.(io.Closer); ok {
+		return rc.Close()
+	}
+	return nil
+}
+
+func NewCSVReader(r io.Reader, d rune) *csv.Reader {
+	cr := csv.NewReader(&uniReader{r})
+	cr.Comma = d
+	cr.LazyQuotes = true
+	cr.TrimLeadingSpace = true
+	cr.ReuseRecord = true
+	return cr
+}
 
 func CSVTable(cr *csv.Reader, key []string) (Table, error) {
 	cols, err := cr.Read()

@@ -98,12 +98,7 @@ func main() {
 		}
 		defer f1.Close()
 
-		cr1 := csv.NewReader(&uniReader{f1})
-
-		cr1.Comma = rune(csv1delim[0])
-		cr1.LazyQuotes = true
-		cr1.TrimLeadingSpace = true
-		cr1.ReuseRecord = true
+		cr1 := difftable.NewCSVReader(f1, rune(csv1delim[0]))
 
 		if csv1sort {
 			t1, err = difftable.UnsortedCSVTable(cr1, key)
@@ -128,12 +123,7 @@ func main() {
 		}
 		defer f2.Close()
 
-		cr2 := csv.NewReader(&uniReader{f2})
-
-		cr2.Comma = rune(csv2delim[0])
-		cr2.LazyQuotes = true
-		cr2.TrimLeadingSpace = true
-		cr2.ReuseRecord = true
+		cr2 := difftable.NewCSVReader(f2, rune(csv2delim[0]))
 
 		if csv2sort {
 			t2, err = difftable.UnsortedCSVTable(cr2, key)
@@ -239,38 +229,4 @@ func runQuery(db *sql.DB, schema, table string, key []string) (*sql.Rows, error)
 	`, qtable, strings.Join(orderBy, ", "))
 
 	return db.Query(stmt)
-}
-
-var bom = []byte{0xef, 0xbb, 0xbf}
-
-// uniReader wraps an io.Reader to replace carriage returns with newlines.
-// This is used with the csv.Reader so it can properly delimit lines.
-type uniReader struct {
-	r io.Reader
-}
-
-func (r *uniReader) Read(buf []byte) (int, error) {
-	n, err := r.r.Read(buf)
-
-	// Detect and remove BOM.
-	if bytes.HasPrefix(buf, bom) {
-		copy(buf, buf[len(bom):])
-		n -= len(bom)
-	}
-
-	// Replace carriage returns with newlines
-	for i, b := range buf {
-		if b == '\r' {
-			buf[i] = '\n'
-		}
-	}
-
-	return n, err
-}
-
-func (r *uniReader) Close() error {
-	if rc, ok := r.r.(io.Closer); ok {
-		return rc.Close()
-	}
-	return nil
 }
