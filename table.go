@@ -3,6 +3,7 @@ package difftable
 import (
 	"bytes"
 	"errors"
+	"fmt"
 )
 
 // Table is an interface supporting iteration over rows.
@@ -117,6 +118,14 @@ func DiffEvents(t1, t2 Table, h func(e *Event)) error {
 	// For lookup.
 	keyMap := make(map[string]struct{}, len(key1))
 	for _, c := range key1 {
+		// Validate both tables have the key columns.
+		if _, ok := cols1[c]; !ok {
+			return fmt.Errorf("table 1 does not have key column `%s`", c)
+		}
+		if _, ok := cols2[c]; !ok {
+			return fmt.Errorf("table 2 does not have key column `%s`", c)
+		}
+
 		keyMap[c] = struct{}{}
 	}
 
@@ -126,6 +135,11 @@ func DiffEvents(t1, t2 Table, h func(e *Event)) error {
 	for c, ty1 := range cols1 {
 		// Both exist check for type changes.
 		if ty2, ok := cols2[c]; ok {
+			// Add shared column.
+			if _, ok := keyMap[c]; !ok {
+				cmpcols = append(cmpcols, c)
+			}
+
 			if ty1 != ty2 {
 				h(&Event{
 					Type:    EventColumnChanged,
@@ -136,11 +150,12 @@ func DiffEvents(t1, t2 Table, h func(e *Event)) error {
 				continue
 			}
 
-			// Add non-key column for row comparison.
-			if _, ok := keyMap[c]; !ok {
-				cmpcols = append(cmpcols, c)
-			}
 			continue
+		}
+
+		// Add dropped column.
+		if _, ok := keyMap[c]; !ok {
+			cmpcols = append(cmpcols, c)
 		}
 
 		// Column doesn't exist in t2, thus is was dropped.
@@ -153,6 +168,11 @@ func DiffEvents(t1, t2 Table, h func(e *Event)) error {
 	// Check for new columns.
 	for c := range cols2 {
 		if _, ok := cols1[c]; !ok {
+			// Add new column.
+			if _, ok := keyMap[c]; !ok {
+				cmpcols = append(cmpcols, c)
+			}
+
 			h(&Event{
 				Type:   EventColumnAdded,
 				Column: c,

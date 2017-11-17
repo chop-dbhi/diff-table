@@ -2,7 +2,7 @@ package difftable
 
 import (
 	"bytes"
-	"reflect"
+	"encoding/json"
 	"testing"
 )
 
@@ -22,12 +22,14 @@ var (
 	csvTableDiff = &TableDiff{
 		TotalRows:   4,
 		ColsAdded:   []string{"city"},
+		ColsDropped: []string{},
+		TypeChanges: make(map[string]*TypeChange),
 		RowsAdded:   1,
 		RowsDeleted: 1,
-		RowsChanged: 1,
+		RowsChanged: 2,
 		NewRows: []map[string]interface{}{
 			{
-				"city":   "Alletown",
+				"city":   "Allentown",
 				"color":  "Black",
 				"gender": "Male",
 				"id":     "4",
@@ -45,9 +47,24 @@ var (
 					"id": "1",
 				},
 				Changes: map[string]*ValueChange{
+					"city": &ValueChange{
+						Old: nil,
+						New: "Trenton",
+					},
 					"color": &ValueChange{
 						Old: "Blue",
 						New: "Teal",
+					},
+				},
+			},
+			{
+				Key: map[string]interface{}{
+					"id": "3",
+				},
+				Changes: map[string]*ValueChange{
+					"city": &ValueChange{
+						Old: nil,
+						New: "Philadelphia",
 					},
 				},
 			},
@@ -66,6 +83,10 @@ var (
 				"id": "1",
 			},
 			Changes: map[string]*ValueChange{
+				"city": &ValueChange{
+					Old: nil,
+					New: "Trenton",
+				},
 				"color": &ValueChange{
 					Old: "Blue",
 					New: "Teal",
@@ -80,13 +101,26 @@ var (
 			},
 		},
 		{
+			Type:   EventRowChanged,
+			Offset: 3,
+			Key: map[string]interface{}{
+				"id": "3",
+			},
+			Changes: map[string]*ValueChange{
+				"city": &ValueChange{
+					Old: nil,
+					New: "Philadelphia",
+				},
+			},
+		},
+		{
 			Type:   EventRowAdded,
 			Offset: 4,
 			Key: map[string]interface{}{
 				"id": "4",
 			},
 			Data: map[string]interface{}{
-				"city":   "Alletown",
+				"city":   "Allentown",
 				"color":  "Black",
 				"gender": "Male",
 				"id":     "4",
@@ -95,6 +129,12 @@ var (
 		},
 	}
 )
+
+func jsonEqual(v1, v2 interface{}) (string, string, bool) {
+	b1, _ := json.Marshal(v1)
+	b2, _ := json.Marshal(v2)
+	return string(b1), string(b2), bytes.Equal(b1, b2)
+}
 
 func TestCsvTable(t *testing.T) {
 	r1 := bytes.NewBufferString(csvTable1)
@@ -113,9 +153,22 @@ func TestCsvTable(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	if reflect.DeepEqual(diff, csvTableDiff) {
-		t.Errorf("diff doesn't match. expected:\n%sgot:\n%s", csvTableDiff, diff)
+	if s1, s2, ok := jsonEqual(csvTableDiff, diff); !ok {
+		t.Errorf("diff doesn't match. expected:\n%sgot:\n%s", s1, s2)
 	}
+}
+
+func TestCsvTableEvents(t *testing.T) {
+	r1 := bytes.NewBufferString(csvTable1)
+	c1 := NewCSVReader(r1, ',')
+
+	r2 := bytes.NewBufferString(csvTable2)
+	c2 := NewCSVReader(r2, ',')
+
+	key := []string{"id"}
+
+	t1, err := CSVTable(c1, key)
+	t2, err := CSVTable(c2, key)
 
 	var events []*Event
 	err = DiffEvents(t1, t2, func(e *Event) {
@@ -125,8 +178,8 @@ func TestCsvTable(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	if reflect.DeepEqual(events, csvDiffEvents) {
-		t.Errorf("diff events don't match. expected:\n%sgot:\n%s", csvDiffEvents, events)
+	if s1, s2, ok := jsonEqual(csvDiffEvents, events); !ok {
+		t.Errorf("diff events don't match. expected:\n%sgot:\n%s", s1, s2)
 	}
 }
 
@@ -160,9 +213,22 @@ func TestUnsortedCsvTable(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	if reflect.DeepEqual(diff, csvTableDiff) {
-		t.Errorf("diff doesn't match. expected:\n%sgot:\n%s", csvTableDiff, diff)
+	if s1, s2, ok := jsonEqual(csvTableDiff, diff); !ok {
+		t.Errorf("diff doesn't match. expected:\n%sgot:\n%s", s1, s2)
 	}
+}
+
+func TestUnsortedCsvTableEvents(t *testing.T) {
+	r1 := bytes.NewBufferString(unsortedCsvTable1)
+	c1 := NewCSVReader(r1, ',')
+
+	r2 := bytes.NewBufferString(unsortedCsvTable2)
+	c2 := NewCSVReader(r2, ',')
+
+	key := []string{"id"}
+
+	t1, err := UnsortedCSVTable(c1, key)
+	t2, err := UnsortedCSVTable(c2, key)
 
 	var events []*Event
 	err = DiffEvents(t1, t2, func(e *Event) {
@@ -172,7 +238,7 @@ func TestUnsortedCsvTable(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	if reflect.DeepEqual(events, csvDiffEvents) {
-		t.Errorf("diff events don't match. expected:\n%sgot:\n%s", csvDiffEvents, events)
+	if s1, s2, ok := jsonEqual(csvDiffEvents, events); !ok {
+		t.Errorf("diff events don't match. expected:\n%sgot:\n%s", s1, s2)
 	}
 }
