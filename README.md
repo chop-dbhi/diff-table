@@ -14,48 +14,170 @@ go get -u github.com/chop-dbhi/diff-table/cmd/diff-table
 
 ## Usage
 
+The minimum requirement is to specify two tables (CSV or relational) and specify the key columns. For example, using the provided example data in the repository, the command would look like this.
+
 ```
 diff-table \
-  -db postgres://localhost:5432/postgres \
-  -table1 data_v1 \
-  -table2 data_v2 \
+  -csv1 example/file1.csv \
+  -csv2 example/file2.csv \
   -key id
 ```
 
-The output is a JSON encoded value which various information about the table differences. If `-diff` is supplied, `row_diffs`, `new_rows`, and `deleted_rows` are included as well. Note, this may significantly increase memory usage if the tables are vastly different.
+The default output is a JSON encoded object with a summary of the differences, including column and row changes.
 
-```
+```json
 {
-  "total_rows": 2055856,
-  "columns_added": [],
+  "total_rows": 4,
+  "columns_added": [
+    "city"
+  ],
   "columns_dropped": [],
   "type_changes": {},
   "rows_added": 1,
-  "rows_deleted": 0,
-  "rows_changed": 1,
+  "rows_deleted": 1,
+  "rows_changed": 1
+}
+```
+
+Adding the `-diff` option in the command will result in row-level changes in the output.
+
+```
+diff-table \
+  -csv1 example/file1.csv \
+  -csv2 example/file2.csv \
+  -key id \
+  -diff
+```
+
+```json
+{
+  "total_rows": 4,
+  "columns_added": [
+    "city"
+  ],
+  "columns_dropped": [],
+  "type_changes": {},
+  "rows_added": 1,
+  "rows_deleted": 1,
+  "rows_changed": 2,
   "row_diffs": [
     {
       "key": {
-        "id": 2009
+        "id": "1"
       },
       "changes": {
-        "val": {
-          "old": 0.7576323747634888,
-          "new": 1.323199987411499
+        "city": {
+          "old": null,
+          "new": "Trenton"
+        },
+        "color": {
+          "old": "Blue",
+          "new": "Teal"
+        }
+      }
+    },
+    {
+      "key": {
+        "id": "3"
+      },
+      "changes": {
+        "city": {
+          "old": null,
+          "new": "Philadelphia"
         }
       }
     }
   ],
   "new_rows": [
     {
-      "id": 2010,
-      "val": 1.53921932383223
+      "city": "Allentown",
+      "color": "Black",
+      "gender": "Male",
+      "id": "4",
+      "name": "Neal"
+    }
+  ],
+  "deleted_rows": [
+    {
+      "id": "2"
     }
   ]
 }
 ```
 
+This type of output is convenient for summary usage, however in some use cases a set of events may be more useful. Using the `-events` option will result in the changes being streamed as they are discovered rather than aggregating everything up into a single output object.
+
+```
+diff-table \
+  -csv1 example/file1.csv \
+  -csv2 example/file2.csv \
+  -key id \
+  -events
+```
+
+The output is a newline-delimited set of JSON-encoded events. Column-based changes will always come first. The `type` field denotes the type of event which can be switched on during consumption.
+
+```json
+{
+  "type": "column-added",
+  "column": "city"
+}
+{
+  "type": "row-changed",
+  "offset": 1,
+  "key": {
+    "id": "1"
+  },
+  "changes": {
+    "city": {
+      "old": null,
+      "new": "Trenton"
+    },
+    "color": {
+      "old": "Blue",
+      "new": "Teal"
+    }
+  }
+}
+{
+  "type": "row-removed",
+  "offset": 2,
+  "key": {
+    "id": "2"
+  }
+}
+{
+  "type": "row-changed",
+  "offset": 3,
+  "key": {
+    "id": "3"
+  },
+  "changes": {
+    "city": {
+      "old": null,
+      "new": "Philadelphia"
+    }
+  }
+}
+{
+  "type": "row-added",
+  "offset": 4,
+  "key": {
+    "id": "4"
+  },
+  "data": {
+    "city": "Allentown",
+    "color": "Black",
+    "gender": "Male",
+    "id": "4",
+    "name": "Neal"
+  }
+}
+```
+
 ## Examples
+
+Below are examples of how tables can be specified including SQL-based tables and CSV files (with sorted or unsorted rows).
 
 ### Tables in the same database
 
