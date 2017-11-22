@@ -115,9 +115,9 @@ func DiffEvents(t1, t2 Table, h func(e *Event)) error {
 	cols1 := t1.Cols()
 	cols2 := t2.Cols()
 
-	// Build lookups for key columns.
 	// Validate both tables have the key columns.
-	key1Map := make(map[string]struct{}, len(key1))
+	// Build lookups key columns.
+	key1Map := make(map[string]struct{}, len(key2))
 	for _, c := range key1 {
 		if _, ok := cols1[c]; !ok {
 			return fmt.Errorf("table 1 does not have key column `%s`", c)
@@ -141,15 +141,12 @@ func DiffEvents(t1, t2 Table, h func(e *Event)) error {
 	)
 
 	for c, ty1 := range cols1 {
-		// Ignore key columns.
-		if _, ok := key1Map[c]; ok {
-			continue
-		}
-
 		// Both exist check for type changes.
 		if ty2, ok := cols2[c]; ok {
-			// Not a key column in 2. Add as shared column.
-			if _, ok := key2Map[c]; !ok {
+			// Not a shared key column. Mark for comparison.
+			_, ok1 := key1Map[c]
+			_, ok2 := key2Map[c]
+			if !(ok1 && ok2) {
 				cmpCols = append(cmpCols, c)
 			}
 
@@ -177,11 +174,6 @@ func DiffEvents(t1, t2 Table, h func(e *Event)) error {
 
 	// Check for new columns.
 	for c := range cols2 {
-		// Ignore key columns.
-		if _, ok := key2Map[c]; ok {
-			continue
-		}
-
 		// New column.
 		if _, ok := cols1[c]; !ok {
 			newCols = append(newCols, c)
