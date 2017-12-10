@@ -177,7 +177,7 @@ The output is a newline-delimited set of JSON-encoded events. Column-based chang
 
 ## Examples
 
-Below are examples of how tables can be specified including SQL-based tables and CSV files (with sorted or unsorted rows).
+Below are examples of how tables can be specified including SQL-based tables and CSV files (with sorted or unsorted rows) and how columns can be renamed (not in the data source, just in the `diff-table` runtime) before the tables are compared.
 
 ### Tables in the same database
 
@@ -230,6 +230,19 @@ diff-table \
 diff-table \
   -csv1 data_v1.csv \
   -db2 postgres://localhost:5432/postgres \
+  -table2 data_v2 \
+  -key id
+```
+
+### Tables with renamed columns
+
+The `data_v1.foo` column will be renamed to `bar` (just in the `diff-table` runtime, not in the source) and compared to the `data_v2.bar` column. The same will happen for the `baz:buz` column rename.
+
+```
+diff-table \
+  -db postgres://localhost:5432/postgres \
+  -table1 data_v1 \
+  -rename1 "foo:bar,baz:buz" \
   -table2 data_v2 \
   -key id
 ```

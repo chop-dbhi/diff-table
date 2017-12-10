@@ -36,6 +36,9 @@ func main() {
 		table2  string
 
 		events bool
+
+		rename1 string
+		rename2 string
 	)
 
 	flag.StringVar(&key1List, "key", "", "Comma-separate list of columns in table 1.")
@@ -59,6 +62,9 @@ func main() {
 	flag.StringVar(&table2, "table2", "", "Name of the second table.")
 
 	flag.BoolVar(&events, "events", false, "Write an event stream to stdout.")
+
+	flag.StringVar(&rename1, "rename1", "", "Comma and colon delimited map of table 1 columns to rename before diffing ('new:old,foo:bar').")
+	flag.StringVar(&rename2, "rename2", "", "Comma and colon delimited map of table 2 columns to rename before diffing ('new:old,foo:bar').")
 
 	flag.Parse()
 
@@ -94,6 +100,16 @@ func main() {
 		err      error
 	)
 
+	renameMap1, err := makeRenameMap(rename1)
+	if err != nil {
+		log.Fatalf("rename1: %s", err)
+	}
+
+	renameMap2, err := makeRenameMap(rename2)
+	if err != nil {
+		log.Fatalf("rename2: %s", err)
+	}
+
 	if csv1 != "" && url1 != "" {
 		log.Fatal("can't both a csv and db source defined")
 		return
@@ -115,13 +131,13 @@ func main() {
 		cr1 := difftable.NewCSVReader(f1, rune(csv1delim[0]))
 
 		if csv1sort {
-			t1, err = difftable.UnsortedCSVTable(cr1, key1)
+			t1, err = difftable.UnsortedCSVTable(cr1, key1, renameMap1)
 			if err != nil {
 				log.Printf("csv1 table: %s", err)
 				return
 			}
 		} else {
-			t1, err = difftable.CSVTable(cr1, key1)
+			t1, err = difftable.CSVTable(cr1, key1, renameMap1)
 			if err != nil {
 				log.Printf("csv1 table: %s", err)
 				return
@@ -140,13 +156,13 @@ func main() {
 		cr2 := difftable.NewCSVReader(f2, rune(csv2delim[0]))
 
 		if csv2sort {
-			t2, err = difftable.UnsortedCSVTable(cr2, key2)
+			t2, err = difftable.UnsortedCSVTable(cr2, key2, renameMap2)
 			if err != nil {
 				log.Printf("csv2 table: %s", err)
 				return
 			}
 		} else {
-			t2, err = difftable.CSVTable(cr2, key2)
+			t2, err = difftable.CSVTable(cr2, key2, renameMap2)
 			if err != nil {
 				log.Printf("csv2 table: %s", err)
 				return
@@ -173,7 +189,7 @@ func main() {
 		}
 		defer rows1.Close()
 
-		t1, err = difftable.SQLTable(rows1, key1)
+		t1, err = difftable.SQLTable(rows1, key1, renameMap1)
 		if err != nil {
 			log.Printf("db1 table: %s", err)
 			return
@@ -198,7 +214,7 @@ func main() {
 		}
 		defer rows2.Close()
 
-		t2, err = difftable.SQLTable(rows2, key2)
+		t2, err = difftable.SQLTable(rows2, key2, renameMap2)
 		if err != nil {
 			log.Printf("db2 table: %s", err)
 			return
@@ -254,4 +270,25 @@ func runQuery(db *sql.DB, schema, table string, key []string) (*sql.Rows, error)
 	`, qtable, strings.Join(orderBy, ", "))
 
 	return db.Query(stmt)
+}
+
+func makeRenameMap(renames string) (map[string]string, error) {
+	if renames == "" {
+		return nil, nil
+	}
+
+	renamesList := strings.Split(renames, ",")
+	renameMap := make(map[string]string, len(renamesList))
+
+	for _, rename := range renamesList {
+		names := strings.Split(rename, ":")
+
+		if len(names) != 2 {
+			return nil, fmt.Errorf("rename malformed: %s", rename)
+		}
+
+		renameMap[names[0]] = names[1]
+	}
+
+	return renameMap, nil
 }

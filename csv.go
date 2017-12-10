@@ -50,10 +50,16 @@ func NewCSVReader(r io.Reader, d rune) *csv.Reader {
 	return cr
 }
 
-func CSVTable(cr *csv.Reader, key []string) (Table, error) {
+func CSVTable(cr *csv.Reader, key []string, renames map[string]string) (Table, error) {
 	cols, err := cr.Read()
 	if err != nil {
 		return nil, err
+	}
+
+	for i, k := range key {
+		if n, ok := renames[k]; ok {
+			key[i] = n
+		}
 	}
 
 	// Create map of column name to index in the array.
@@ -61,6 +67,9 @@ func CSVTable(cr *csv.Reader, key []string) (Table, error) {
 	colTypes := make(map[string]string, len(cols))
 
 	for i, c := range cols {
+		if n, ok := renames[c]; ok {
+			c = n
+		}
 		colMap[c] = i
 		colTypes[c] = "string"
 	}

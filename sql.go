@@ -1,11 +1,19 @@
 package difftable
 
-import "database/sql"
+import (
+	"database/sql"
+)
 
-func SQLTable(rows *sql.Rows, key []string) (Table, error) {
+func SQLTable(rows *sql.Rows, key []string, renames map[string]string) (Table, error) {
 	cols, err := rows.Columns()
 	if err != nil {
 		return nil, err
+	}
+
+	for i, k := range key {
+		if n, ok := renames[k]; ok {
+			key[i] = n
+		}
 	}
 
 	// Create map of column name to index in the array.
@@ -13,6 +21,9 @@ func SQLTable(rows *sql.Rows, key []string) (Table, error) {
 	colTypes := make(map[string]string, len(cols))
 
 	for i, c := range cols {
+		if n, ok := renames[c]; ok {
+			c = n
+		}
 		colMap[c] = i
 		colTypes[c] = ""
 	}
