@@ -128,7 +128,63 @@ var (
 			},
 		},
 	}
+
+	csvSnapshotEvents = []*Event{
+		{
+			Type:   EventRowStored,
+			Offset: 1,
+			Key: map[string]interface{}{
+				"id": "1",
+			},
+			Data: map[string]interface{}{
+				"city":   "Trenton",
+				"color":  "Teal",
+				"gender": "Male",
+				"id":     "1",
+				"name":   "John",
+			},
+		},
+		{
+			Type:   EventRowStored,
+			Offset: 2,
+			Key: map[string]interface{}{
+				"id": "3",
+			},
+			Data: map[string]interface{}{
+				"city":   "Philadelphia",
+				"color":  "Yellow",
+				"gender": "Female",
+				"id":     "3",
+				"name":   "Sam",
+			},
+		},
+		{
+			Type:   EventRowStored,
+			Offset: 3,
+			Key: map[string]interface{}{
+				"id": "4",
+			},
+			Data: map[string]interface{}{
+				"city":   "Allentown",
+				"color":  "Black",
+				"gender": "Male",
+				"id":     "4",
+				"name":   "Neal",
+			},
+		},
+	}
 )
+
+func jsonEqualEvents(v1, v2 []*Event) (string, string, bool) {
+	// Ignore time..
+	for _, e1 := range v1 {
+		e1.Time = 0
+	}
+	for _, e2 := range v2 {
+		e2.Time = 0
+	}
+	return jsonEqual(v1, v2)
+}
 
 func jsonEqual(v1, v2 interface{}) (string, string, bool) {
 	b1, _ := json.Marshal(v1)
@@ -145,8 +201,8 @@ func TestCsvTable(t *testing.T) {
 
 	key := []string{"id"}
 
-	t1, err := CSVTable(c1, key)
-	t2, err := CSVTable(c2, key)
+	t1, err := CSVTable(c1, key, nil)
+	t2, err := CSVTable(c2, key, nil)
 
 	diff, err := Diff(t1, t2, true)
 	if err != nil {
@@ -167,8 +223,8 @@ func TestCsvTableEvents(t *testing.T) {
 
 	key := []string{"id"}
 
-	t1, err := CSVTable(c1, key)
-	t2, err := CSVTable(c2, key)
+	t1, err := CSVTable(c1, key, nil)
+	t2, err := CSVTable(c2, key, nil)
 
 	var events []*Event
 	err = DiffEvents(t1, t2, func(e *Event) {
@@ -178,8 +234,29 @@ func TestCsvTableEvents(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	if s1, s2, ok := jsonEqual(csvDiffEvents, events); !ok {
+	if s1, s2, ok := jsonEqualEvents(csvDiffEvents, events); !ok {
 		t.Errorf("diff events don't match. expected:\n%sgot:\n%s", s1, s2)
+	}
+}
+
+func TestCsvTableSnapsho(t *testing.T) {
+	r2 := bytes.NewBufferString(csvTable2)
+	c2 := NewCSVReader(r2, ',')
+
+	key := []string{"id"}
+
+	t2, err := CSVTable(c2, key, nil)
+
+	var events []*Event
+	err = Snapshot(t2, func(e *Event) {
+		events = append(events, e)
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	if s1, s2, ok := jsonEqualEvents(csvSnapshotEvents, events); !ok {
+		t.Errorf("snapshots events don't match. expected:\n%sgot:\n%s", s1, s2)
 	}
 }
 
@@ -205,8 +282,8 @@ func TestUnsortedCsvTable(t *testing.T) {
 
 	key := []string{"id"}
 
-	t1, err := UnsortedCSVTable(c1, key)
-	t2, err := UnsortedCSVTable(c2, key)
+	t1, err := UnsortedCSVTable(c1, key, nil)
+	t2, err := UnsortedCSVTable(c2, key, nil)
 
 	diff, err := Diff(t1, t2, true)
 	if err != nil {
@@ -227,8 +304,8 @@ func TestUnsortedCsvTableEvents(t *testing.T) {
 
 	key := []string{"id"}
 
-	t1, err := UnsortedCSVTable(c1, key)
-	t2, err := UnsortedCSVTable(c2, key)
+	t1, err := UnsortedCSVTable(c1, key, nil)
+	t2, err := UnsortedCSVTable(c2, key, nil)
 
 	var events []*Event
 	err = DiffEvents(t1, t2, func(e *Event) {
@@ -238,7 +315,28 @@ func TestUnsortedCsvTableEvents(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	if s1, s2, ok := jsonEqual(csvDiffEvents, events); !ok {
+	if s1, s2, ok := jsonEqualEvents(csvDiffEvents, events); !ok {
+		t.Errorf("diff events don't match. expected:\n%sgot:\n%s", s1, s2)
+	}
+}
+
+func TestUnsortedCsvTableSnapshot(t *testing.T) {
+	r2 := bytes.NewBufferString(unsortedCsvTable2)
+	c2 := NewCSVReader(r2, ',')
+
+	key := []string{"id"}
+
+	t2, err := UnsortedCSVTable(c2, key, nil)
+
+	var events []*Event
+	err = Snapshot(t2, func(e *Event) {
+		events = append(events, e)
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	if s1, s2, ok := jsonEqualEvents(csvSnapshotEvents, events); !ok {
 		t.Errorf("diff events don't match. expected:\n%sgot:\n%s", s1, s2)
 	}
 }

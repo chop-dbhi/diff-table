@@ -105,7 +105,9 @@ diff-table \
 }
 ```
 
-This type of output is convenient for summary usage, however in some use cases a set of events may be more useful. Using the `-events` option will result in the changes being streamed as they are discovered rather than aggregating everything up into a single output object.
+### Events
+
+The above type of output is convenient for summary usage, however in some use cases a set of events may be more useful. Using the `-events` option will result in the changes being streamed as they are discovered rather than aggregating everything up into a single output object.
 
 ```
 diff-table \
@@ -115,7 +117,43 @@ diff-table \
   -events
 ```
 
-The output is a newline-delimited set of JSON-encoded events. Column-based changes will always come first. The `type` field denotes the type of event which can be switched on during consumption.
+The output is a newline-delimited set of JSON-encoded events. Column-based changes will always come first. The `type` field denotes the type of event which can be switched on during consumption. The base event structured looks as follows:
+
+```js
+{
+  // Event name/type.
+  "type": "row-added",
+
+  // Unix epoch timestamp in seconds.
+  "time": 1520114848,
+
+  // Offset of the row in the batch, if applicable. This can also be used as an
+  // ordering mechanism.
+  "offset": 1,
+
+  // Key of the row this event pertains to, if applicable.
+  "key": {...},
+
+  // Full snapshot of the row. This will be present row row-added events, but
+  // can be optionally included for row-changed and row-removed events.
+  "data": {...},
+
+  // Set of changes found relative to the old row. Each key is the column
+  // name and the value is an object with `old` and `new` keys with the
+  // respective values.
+  "changes": {...},
+
+  // If a column -added, -changed, or -removed event, this is the name of the
+  // column affected.
+  "column": "city"
+
+  // If a column-changed event, this is the old type.
+  "old_type": "int32",
+
+  // If a column-changed event, this is the new type.
+  "new_type": "int64"
+}
+```
 
 ```json
 {
@@ -173,6 +211,21 @@ The output is a newline-delimited set of JSON-encoded events. Column-based chang
     "name": "Neal"
   }
 }
+```
+
+#### Snapshots
+
+In addition to change events, snapshots are supported which scans a table and emits a `row-stored` event including the current state of each row. These events are structurally equivalent to `row-added` events which include the full `data`.
+
+The use case for them is to initialize a stream from a stateful starting point, but can be used over time to make new starting points for consumers. This prevents consumers from needing to know what the starting state was when the stream was initiated as well as not needing to read from the very beginning of the stream in order to build up the current state. With snapshots, the consumer can start from the last known snapshot and consume from there.
+
+To create a snapshot, use the `-snapshot` option with the newest table or CSV file specified.
+
+```
+diff-table \
+  -csv1 example/file1.csv \
+  -key id \
+  -snapshot
 ```
 
 ## Examples

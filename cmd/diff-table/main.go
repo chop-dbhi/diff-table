@@ -35,7 +35,8 @@ func main() {
 		schema2 string
 		table2  string
 
-		events bool
+		events   bool
+		snapshot bool
 
 		rename1 string
 		rename2 string
@@ -62,6 +63,7 @@ func main() {
 	flag.StringVar(&table2, "table2", "", "Name of the second table.")
 
 	flag.BoolVar(&events, "events", false, "Write an event stream to stdout.")
+	flag.BoolVar(&snapshot, "snapshot", false, "Create a snapshot of the table as events to stdout.")
 
 	flag.StringVar(&rename1, "rename1", "", "Comma and colon delimited map of table 1 columns to rename before diffing ('new:old,foo:bar').")
 	flag.StringVar(&rename2, "rename2", "", "Comma and colon delimited map of table 2 columns to rename before diffing ('new:old,foo:bar').")
@@ -82,8 +84,10 @@ func main() {
 		key2 = strings.Split(key2List, ",")
 	}
 
-	if len(key1) != len(key2) {
-		log.Fatal("keys must be the same length")
+	if !snapshot {
+		if len(key1) != len(key2) {
+			log.Fatal("keys must be the same length")
+		}
 	}
 
 	if url2 == "" {
@@ -223,25 +227,39 @@ func main() {
 
 	enc := json.NewEncoder(os.Stdout)
 
+	// Snapshot the table.
+	if snapshot {
+		err := difftable.Snapshot(t1, func(e *difftable.Event) {
+			enc.Encode(e)
+		})
+		if err != nil {
+			log.Print("snapshot: %s", err)
+		}
+		return
+	}
+
+	// Diff and produce events.
 	if events {
 		err := difftable.DiffEvents(t1, t2, func(e *difftable.Event) {
 			enc.Encode(e)
 		})
 		if err != nil {
 			log.Printf("diff stream: %s", err)
-			return
-		}
-	} else {
-		diff, err := difftable.Diff(t1, t2, diffRows)
-		if err != nil {
-			log.Printf("diff: %s", err)
-			return
 		}
 
-		if err := enc.Encode(diff); err != nil {
-			log.Printf("json: %s", err)
-			return
-		}
+		return
+	}
+
+	// Diff and summarize.
+	diff, err := difftable.Diff(t1, t2, diffRows)
+	if err != nil {
+		log.Printf("diff: %s", err)
+		return
+	}
+
+	if err := enc.Encode(diff); err != nil {
+		log.Printf("json: %s", err)
+		return
 	}
 }
 
