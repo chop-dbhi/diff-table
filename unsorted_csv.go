@@ -42,21 +42,21 @@ func UnsortedCSVTable(cr *csv.Reader, key []string, renames map[string]string) (
 	}
 
 	// Create map of column name to index in the array.
-	colMap := make(map[string]int, len(cols))
+	colIdxs := make(map[string]int, len(cols))
 	colTypes := make(map[string]string, len(cols))
 
 	for i, c := range cols {
 		if n, ok := renames[c]; ok {
 			c = n
 		}
-		colMap[c] = i
+		colIdxs[c] = i
 		colTypes[c] = "string"
 	}
 
 	keyLen := len(key)
 	keyIdx := make([]int, keyLen)
 	for i, k := range key {
-		keyIdx[i] = colMap[k]
+		keyIdx[i] = colIdxs[k]
 	}
 
 	makeKey := func(r []string) string {
@@ -78,9 +78,9 @@ func UnsortedCSVTable(cr *csv.Reader, key []string, renames map[string]string) (
 		}
 
 		rows = append(rows, &csvRow{
-			colMap: colMap,
-			key:    makeKey(r),
-			row:    copySlice(r),
+			colIdxs: colIdxs,
+			key:     makeKey(r),
+			row:     copySlice(r),
 		})
 	}
 
@@ -91,7 +91,7 @@ func UnsortedCSVTable(cr *csv.Reader, key []string, renames map[string]string) (
 		len:      len(rows),
 		key:      key,
 		colLen:   len(cols),
-		colMap:   colMap,
+		colIdxs:  colIdxs,
 		colTypes: colTypes,
 	}, nil
 }
@@ -104,7 +104,7 @@ type unsortedCsvTable struct {
 	key []string
 
 	colLen   int
-	colMap   map[string]int
+	colIdxs  map[string]int
 	colTypes map[string]string
 
 	row *csvRow

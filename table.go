@@ -93,9 +93,9 @@ func newValueMap(r Row, cols map[string]string) map[string]interface{} {
 	return c
 }
 
-func newKeyMap(r Row, cols []string) map[string]interface{} {
-	c := make(map[string]interface{}, len(cols))
-	for _, k := range cols {
+func newKeyMap(r Row, keys []string) map[string]interface{} {
+	c := make(map[string]interface{}, len(keys))
+	for _, k := range keys {
 		c[k] = r.Value(k)
 	}
 
@@ -161,12 +161,14 @@ func DiffEvents(t1, t2 Table, h func(e *Event)) error {
 	key1 := t1.Key()
 	key2 := t2.Key()
 
-	if len(key1) == 0 || len(key2) == 0 {
-		return errors.New("a key must be provided")
-	}
-
 	if len(key1) != len(key2) {
 		return errors.New("keys are different lengths")
+	}
+
+	keyLen := len(key1)
+
+	if keyLen == 0 {
+		return errors.New("a key must be provided")
 	}
 
 	ts := time.Now().Unix()
@@ -176,20 +178,20 @@ func DiffEvents(t1, t2 Table, h func(e *Event)) error {
 
 	// Validate both tables have the key columns.
 	// Build lookups key columns.
-	key1Map := make(map[string]struct{}, len(key2))
+	key1Set := make(map[string]struct{}, keyLen)
 	for _, c := range key1 {
 		if _, ok := cols1[c]; !ok {
 			return fmt.Errorf("table 1 does not have key column `%s`", c)
 		}
-		key1Map[c] = struct{}{}
+		key1Set[c] = struct{}{}
 	}
 
-	key2Map := make(map[string]struct{}, len(key2))
+	key2Set := make(map[string]struct{}, keyLen)
 	for _, c := range key2 {
 		if _, ok := cols2[c]; !ok {
 			return fmt.Errorf("table 2 does not have key column `%s`", c)
 		}
-		key2Map[c] = struct{}{}
+		key2Set[c] = struct{}{}
 	}
 
 	// Columns to check when comparing rows.
@@ -203,8 +205,8 @@ func DiffEvents(t1, t2 Table, h func(e *Event)) error {
 		// Both exist check for type changes.
 		if ty2, ok := cols2[c]; ok {
 			// Not a shared key column. Mark for comparison.
-			_, ok1 := key1Map[c]
-			_, ok2 := key2Map[c]
+			_, ok1 := key1Set[c]
+			_, ok2 := key2Set[c]
 			if !(ok1 && ok2) {
 				cmpCols = append(cmpCols, c)
 			}
@@ -253,8 +255,8 @@ func DiffEvents(t1, t2 Table, h func(e *Event)) error {
 		n2 = true
 
 		// Key values as bytes for determine next in sequence.
-		k1 = make([][]byte, len(key1))
-		k2 = make([][]byte, len(key2))
+		k1 = make([][]byte, keyLen)
+		k2 = make([][]byte, keyLen)
 
 		// Next call was ok.
 		ok1 bool

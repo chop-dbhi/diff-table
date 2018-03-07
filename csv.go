@@ -63,14 +63,14 @@ func CSVTable(cr *csv.Reader, key []string, renames map[string]string) (Table, e
 	}
 
 	// Create map of column name to index in the array.
-	colMap := make(map[string]int, len(cols))
+	colIdxs := make(map[string]int, len(cols))
 	colTypes := make(map[string]string, len(cols))
 
 	for i, c := range cols {
 		if n, ok := renames[c]; ok {
 			c = n
 		}
-		colMap[c] = i
+		colIdxs[c] = i
 		colTypes[c] = "string"
 	}
 
@@ -78,7 +78,7 @@ func CSVTable(cr *csv.Reader, key []string, renames map[string]string) (Table, e
 		rows:     cr,
 		key:      key,
 		colLen:   len(cols),
-		colMap:   colMap,
+		colIdxs:  colIdxs,
 		colTypes: colTypes,
 	}, nil
 }
@@ -88,7 +88,7 @@ type csvTable struct {
 	key  []string
 
 	colLen   int
-	colMap   map[string]int
+	colIdxs  map[string]int
 	colTypes map[string]string
 
 	row []string
@@ -104,8 +104,8 @@ func (t *csvTable) Cols() map[string]string {
 
 func (t *csvTable) Row() Row {
 	return &csvRow{
-		colMap: t.colMap,
-		row:    t.row,
+		colIdxs: t.colIdxs,
+		row:     t.row,
 	}
 }
 
@@ -133,13 +133,13 @@ func (t *csvTable) Next() (bool, error) {
 
 type csvRow struct {
 	// Unused by unsorted CSV table.
-	key    string
-	colMap map[string]int
-	row    []string
+	key     string
+	colIdxs map[string]int
+	row     []string
 }
 
 func (r *csvRow) Bytes(col string) []byte {
-	i, ok := r.colMap[col]
+	i, ok := r.colIdxs[col]
 	if !ok {
 		return nil
 	}
@@ -148,7 +148,7 @@ func (r *csvRow) Bytes(col string) []byte {
 }
 
 func (r *csvRow) Value(col string) interface{} {
-	i, ok := r.colMap[col]
+	i, ok := r.colIdxs[col]
 	if !ok {
 		return nil
 	}

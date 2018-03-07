@@ -17,14 +17,14 @@ func SQLTable(rows *sql.Rows, key []string, renames map[string]string) (Table, e
 	}
 
 	// Create map of column name to index in the array.
-	colMap := make(map[string]int, len(cols))
+	colIdxs := make(map[string]int, len(cols))
 	colTypes := make(map[string]string, len(cols))
 
 	for i, c := range cols {
 		if n, ok := renames[c]; ok {
 			c = n
 		}
-		colMap[c] = i
+		colIdxs[c] = i
 		colTypes[c] = ""
 	}
 
@@ -45,7 +45,7 @@ func SQLTable(rows *sql.Rows, key []string, renames map[string]string) (Table, e
 		rows:     rows,
 		key:      key,
 		cols:     cols,
-		colMap:   colMap,
+		colIdxs:  colIdxs,
 		colTypes: colTypes,
 		bvals:    bvals,
 		bdest:    bdest,
@@ -59,7 +59,7 @@ type sqlTable struct {
 	key  []string
 
 	cols     []string
-	colMap   map[string]int
+	colIdxs  map[string]int
 	colTypes map[string]string
 
 	bdest []interface{}
@@ -80,7 +80,7 @@ func (t *sqlTable) Cols() map[string]string {
 func (t *sqlTable) Row() Row {
 	return &sqlRow{
 		colTypes: t.colTypes,
-		colMap:   t.colMap,
+		colIdxs:  t.colIdxs,
 		bvals:    t.bvals,
 		bdest:    t.bdest,
 		rvals:    t.rvals,
@@ -107,7 +107,7 @@ func (t *sqlTable) Next() (bool, error) {
 
 type sqlRow struct {
 	colTypes map[string]string
-	colMap   map[string]int
+	colIdxs  map[string]int
 	bdest    []interface{}
 	bvals    [][]byte
 	rdest    []interface{}
@@ -117,7 +117,7 @@ type sqlRow struct {
 // Get returns returns a column value as a byte array.
 // This is used for comparision.
 func (r *sqlRow) Bytes(col string) []byte {
-	i, ok := r.colMap[col]
+	i, ok := r.colIdxs[col]
 	if !ok {
 		return nil
 	}
@@ -127,7 +127,7 @@ func (r *sqlRow) Bytes(col string) []byte {
 
 // GetValue returns a column value in the native type.
 func (r *sqlRow) Value(col string) interface{} {
-	i, ok := r.colMap[col]
+	i, ok := r.colIdxs[col]
 	if !ok {
 		return nil
 	}
