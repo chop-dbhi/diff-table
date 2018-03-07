@@ -36,6 +36,7 @@ func main() {
 		table2  string
 
 		events   bool
+		fulldata bool
 		snapshot bool
 
 		rename1 string
@@ -63,6 +64,7 @@ func main() {
 	flag.StringVar(&table2, "table2", "", "Name of the second table.")
 
 	flag.BoolVar(&events, "events", false, "Write an event stream to stdout.")
+	flag.BoolVar(&fulldata, "data", false, "Include the row data in row-changed and row-deleted events.")
 	flag.BoolVar(&snapshot, "snapshot", false, "Create a snapshot of the table as events to stdout.")
 
 	flag.StringVar(&rename1, "rename1", "", "Comma and colon delimited map of table 1 columns to rename before diffing ('new:old,foo:bar').")
@@ -241,6 +243,13 @@ func main() {
 	// Diff and produce events.
 	if events {
 		err := difftable.DiffEvents(t1, t2, func(e *difftable.Event) {
+			// Elide the full data from output.
+			if e.Type == difftable.EventRowChanged || e.Type == difftable.EventRowRemoved {
+				if !fulldata {
+					e.Data = nil
+				}
+			}
+
 			enc.Encode(e)
 		})
 		if err != nil {

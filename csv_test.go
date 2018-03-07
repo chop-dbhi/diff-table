@@ -228,6 +228,9 @@ func TestCsvTableEvents(t *testing.T) {
 
 	var events []*Event
 	err = DiffEvents(t1, t2, func(e *Event) {
+		if e.Type == EventRowChanged || e.Type == EventRowRemoved {
+			e.Data = nil
+		}
 		events = append(events, e)
 	})
 	if err != nil {
@@ -309,6 +312,9 @@ func TestUnsortedCsvTableEvents(t *testing.T) {
 
 	var events []*Event
 	err = DiffEvents(t1, t2, func(e *Event) {
+		if e.Type == EventRowChanged || e.Type == EventRowRemoved {
+			e.Data = nil
+		}
 		events = append(events, e)
 	})
 	if err != nil {

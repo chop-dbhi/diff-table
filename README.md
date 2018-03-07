@@ -134,8 +134,9 @@ The output is a newline-delimited set of JSON-encoded events. Column-based chang
   // Key of the row this event pertains to, if applicable.
   "key": {...},
 
-  // Full snapshot of the row. This will be present row row-added events, but
-  // can be optionally included for row-changed and row-removed events.
+  // Full snapshot of the row. This will be present in row-added events, but
+  // can be optionally included for row-changed and row-removed events using
+  // the -data option.
   "data": {...},
 
   // Set of changes found relative to the old row. Each key is the column

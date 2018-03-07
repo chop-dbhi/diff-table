@@ -333,6 +333,7 @@ func DiffEvents(t1, t2 Table, h func(e *Event)) error {
 				Time:   ts,
 				Offset: offset,
 				Key:    newKeyMap(r1, key1),
+				Data:   newValueMap(r1, cols1),
 			})
 			continue
 		}
@@ -349,6 +350,7 @@ func DiffEvents(t1, t2 Table, h func(e *Event)) error {
 				Time:   ts,
 				Offset: offset,
 				Key:    newKeyMap(r1, key1),
+				Data:   newValueMap(r1, cols1),
 			})
 			continue
 		}
@@ -401,6 +403,7 @@ func DiffEvents(t1, t2 Table, h func(e *Event)) error {
 				Time:    ts,
 				Offset:  offset,
 				Key:     newKeyMap(r1, key1),
+				Data:    newValueMap(r2, cols2),
 				Changes: changes,
 			})
 		}
