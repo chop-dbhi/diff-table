@@ -1,5 +1,7 @@
 # diff-table
 
+[![Build Status](https://travis-ci.org/chop-dbhi/diff-table.svg?branch=master)](https://travis-ci.org/chop-dbhi/diff-table) [![Coverage Status](https://coveralls.io/repos/github/chop-dbhi/diff-table/badge.svg?branch=master)](https://coveralls.io/github/chop-dbhi/diff-table?branch=master)
+
 A tool to compare two tables of data. Currently the tool supported tables from Postgres and CSV files.
 
 The primary use case is to compare the output of a query executed at different points in time. For example, in a batch ETL process that runs every night, you can compare the previous batch with the new batch.
