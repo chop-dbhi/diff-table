@@ -1,4 +1,11 @@
 language: go
+
 go:
   - "1.10"
   - "1.11"
+
+install:
+  - GO111MODULE=on go get -t -v .
+
+script:
+  - go test -v -bench=. -benchmem .
