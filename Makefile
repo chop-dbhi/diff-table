@@ -2,10 +2,10 @@ PROG_NAME := "diff-table"
 IMAGE_NAME := "dbhi/diff-table"
 CMD_PATH := "./cmd/diff-table"
 
-GIT_SHA := $(shell git log -1 --pretty=format:"%h" .)
-GIT_TAG := $(shell git describe --tags --exact-match . 2>/dev/null)
+GIT_SHA := $(shell git log -1 --pretty=format:"%h")
+GIT_TAG := $(shell git describe --tags --exact-match 2>/dev/null)
 GIT_BRANCH := $(shell git symbolic-ref -q --short HEAD)
-GIT_VERSION := $(shell git log -1 --pretty=format:"%h (%ci)" .)
+GIT_VERSION := $(shell git log -1 --pretty=format:"%h (%ci)")
 
 build:
 	go build -ldflags "-X \"main.buildVersion=$(GIT_VERSION)\"" \
