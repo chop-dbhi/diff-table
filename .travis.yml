@@ -4,8 +4,12 @@ go:
   - "1.10"
   - "1.11"
 
+before_install:
+  - go get github.com/mattn/goveralls
+
 install:
   - GO111MODULE=on go get -t -v .
 
 script:
-  - go test -v -bench=. -benchmem .
+  - go test -v -race -covermode=atomic -coverprofile=profile.cov -bench=. -benchmem .
+  - "$HOME/gopath/bin/goveralls -coverprofile=profile.cov -service=travis-ci"
