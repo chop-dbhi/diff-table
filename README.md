@@ -302,3 +302,14 @@ diff-table \
   -table2 data_v2 \
   -key id
 ```
+
+### SQL statements
+
+In addition to tables, arbitrary SQL statements are supported as well. The basic requirement is that the columns specified in `-key` must existing the statement and the data must be ordered by the key columns.
+
+```
+diff-table \
+  -db postgres://localhost:5432/postgres \
+  -kye id \
+  -sql1 "select id, col1, col2 from table1 order by id" \
+  -sql1 "select id, col1, col2 from table2 order by id"

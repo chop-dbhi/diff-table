@@ -30,10 +30,12 @@ func main() {
 		url1    string
 		schema1 string
 		table1  string
+		sql1    string
 
 		url2    string
 		schema2 string
 		table2  string
+		sql2    string
 
 		events   bool
 		fulldata bool
@@ -58,10 +60,12 @@ func main() {
 	flag.StringVar(&url1, "db", "", "Database 1 connection URL.")
 	flag.StringVar(&schema1, "schema", "", "Name of the first schema.")
 	flag.StringVar(&table1, "table1", "", "Name of the first table.")
+	flag.StringVar(&sql1, "sql1", "", "SQL statement of the first table.")
 
 	flag.StringVar(&url2, "db2", "", "Database 2 connection URL. Defaults to db option.")
 	flag.StringVar(&schema2, "schema2", "", "Name of the second schema. Default to schema option.")
 	flag.StringVar(&table2, "table2", "", "Name of the second table.")
+	flag.StringVar(&sql2, "sql2", "", "SQL statement of the second table.")
 
 	flag.BoolVar(&events, "events", false, "Write an event stream to stdout.")
 	flag.BoolVar(&fulldata, "data", false, "Include the row data in row-changed and row-deleted events.")
@@ -187,12 +191,22 @@ func main() {
 	}
 
 	if db1 != nil {
-		rows1, err := runQuery(db1, schema1, table1, key1)
+		var (
+			rows1 *sql.Rows
+			err   error
+		)
+
+		if sql1 != "" {
+			rows1, err = db1.Query(sql1)
+		} else {
+			rows1, err = runQuery(db1, schema1, table1, key1)
+		}
 		if err != nil {
 			db1.Close()
 			log.Printf("db1 query: %s", err)
 			return
 		}
+
 		defer rows1.Close()
 
 		t1, err = difftable.SQLTable(rows1, key1, renameMap1)
@@ -203,21 +217,24 @@ func main() {
 	}
 
 	if url2 != "" {
+		var (
+			rows2 *sql.Rows
+			err   error
+		)
+
 		db2, err = sql.Open("postgres", url2)
 		if err != nil {
 			log.Printf("db2 open: %s", err)
 			return
 		}
 		defer db2.Close()
-	}
 
-	if db2 != nil {
-		rows2, err := runQuery(db2, schema2, table2, key2)
-		if err != nil {
-			db2.Close()
-			log.Printf("db2 query: %s", err)
-			return
+		if sql2 != "" {
+			rows2, err = db2.Query(sql2)
+		} else {
+			rows2, err = runQuery(db2, schema2, table2, key2)
 		}
+
 		defer rows2.Close()
 
 		t2, err = difftable.SQLTable(rows2, key2, renameMap2)
