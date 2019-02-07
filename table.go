@@ -103,7 +103,7 @@ func newKeyMap(r Row, keys []string) map[string]interface{} {
 
 }
 
-func Snapshot(t1 Table, h func(e *Event)) error {
+func Snapshot(t1 Table, h func(e *Event) error) error {
 	key1 := t1.Key()
 	if len(key1) == 0 {
 		return errors.New("a key must be provided")
@@ -145,19 +145,21 @@ func Snapshot(t1 Table, h func(e *Event)) error {
 		}
 
 		// Emit event.
-		h(&Event{
+		if err := h(&Event{
 			Type:   EventRowStored,
 			Time:   ts,
 			Offset: offset,
 			Key:    newKeyMap(r1, key1),
 			Data:   newValueMap(r1, cols1),
-		})
+		}); err != nil {
+			return err
+		}
 	}
 
 	return nil
 }
 
-func DiffEvents(t1, t2 Table, h func(e *Event)) error {
+func DiffEvents(t1, t2 Table, h func(e *Event) error) error {
 	key1 := t1.Key()
 	key2 := t2.Key()
 
@@ -213,24 +215,28 @@ func DiffEvents(t1, t2 Table, h func(e *Event)) error {
 
 			// Emit the type difference.
 			if ty1 != ty2 {
-				h(&Event{
+				if err := h(&Event{
 					Type:    EventColumnChanged,
 					Time:    ts,
 					Column:  c,
 					OldType: ty1,
 					NewType: ty2,
-				})
+				}); err != nil {
+					return err
+				}
 			}
 
 			// Does not exist in new cols. Mark as dropped.
 		} else {
 			dropCols = append(dropCols, c)
 
-			h(&Event{
+			if err := h(&Event{
 				Type:   EventColumnRemoved,
 				Time:   ts,
 				Column: c,
-			})
+			}); err != nil {
+				return err
+			}
 
 		}
 	}
@@ -241,11 +247,13 @@ func DiffEvents(t1, t2 Table, h func(e *Event)) error {
 		if _, ok := cols1[c]; !ok {
 			newCols = append(newCols, c)
 
-			h(&Event{
+			if err := h(&Event{
 				Type:   EventColumnAdded,
 				Time:   ts,
 				Column: c,
-			})
+			}); err != nil {
+				return err
+			}
 		}
 	}
 
@@ -315,13 +323,15 @@ func DiffEvents(t1, t2 Table, h func(e *Event)) error {
 		// No more rows in old table.
 		if !ok1 {
 			n2 = true
-			h(&Event{
+			if err := h(&Event{
 				Type:   EventRowAdded,
 				Time:   ts,
 				Offset: offset,
 				Key:    newKeyMap(r2, key2),
 				Data:   newValueMap(r2, cols2),
-			})
+			}); err != nil {
+				return err
+			}
 
 			continue
 		}
@@ -330,13 +340,15 @@ func DiffEvents(t1, t2 Table, h func(e *Event)) error {
 		if !ok2 {
 			n1 = true
 
-			h(&Event{
+			if err := h(&Event{
 				Type:   EventRowRemoved,
 				Time:   ts,
 				Offset: offset,
 				Key:    newKeyMap(r1, key1),
 				Data:   newValueMap(r1, cols1),
-			})
+			}); err != nil {
+				return err
+			}
 			continue
 		}
 
@@ -347,13 +359,15 @@ func DiffEvents(t1, t2 Table, h func(e *Event)) error {
 		if p == -1 {
 			n1 = true
 
-			h(&Event{
+			if err := h(&Event{
 				Type:   EventRowRemoved,
 				Time:   ts,
 				Offset: offset,
 				Key:    newKeyMap(r1, key1),
 				Data:   newValueMap(r1, cols1),
-			})
+			}); err != nil {
+				return err
+			}
 			continue
 		}
 
@@ -361,13 +375,15 @@ func DiffEvents(t1, t2 Table, h func(e *Event)) error {
 		if p == 1 {
 			n2 = true
 
-			h(&Event{
+			if err := h(&Event{
 				Type:   EventRowAdded,
 				Time:   ts,
 				Offset: offset,
 				Key:    newKeyMap(r2, key2),
 				Data:   newValueMap(r2, cols2),
-			})
+			}); err != nil {
+				return err
+			}
 			continue
 		}
 
@@ -400,14 +416,16 @@ func DiffEvents(t1, t2 Table, h func(e *Event)) error {
 		}
 
 		if len(changes) > 0 {
-			h(&Event{
+			if err := h(&Event{
 				Type:    EventRowChanged,
 				Time:    ts,
 				Offset:  offset,
 				Key:     newKeyMap(r1, key1),
 				Data:    newValueMap(r2, cols2),
 				Changes: changes,
-			})
+			}); err != nil {
+				return err
+			}
 		}
 
 		// Advance both.
@@ -431,7 +449,7 @@ func Diff(t1, t2 Table, diffRows bool) (*TableDiff, error) {
 		DeletedRows: make([]map[string]interface{}, 0),
 	}
 
-	err := DiffEvents(t1, t2, func(e *Event) {
+	err := DiffEvents(t1, t2, func(e *Event) error {
 		diff.TotalRows = e.Offset
 
 		switch e.Type {
@@ -468,6 +486,8 @@ func Diff(t1, t2 Table, diffRows bool) (*TableDiff, error) {
 				})
 			}
 		}
+
+		return nil
 	})
 
 	if err != nil {

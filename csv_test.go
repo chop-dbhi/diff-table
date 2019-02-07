@@ -227,11 +227,12 @@ func TestCsvTableEvents(t *testing.T) {
 	t2, err := CSVTable(c2, key, nil)
 
 	var events []*Event
-	err = DiffEvents(t1, t2, func(e *Event) {
+	err = DiffEvents(t1, t2, func(e *Event) error {
 		if e.Type == EventRowChanged || e.Type == EventRowRemoved {
 			e.Data = nil
 		}
 		events = append(events, e)
+		return nil
 	})
 	if err != nil {
 		t.Fatal(err)
@@ -251,8 +252,9 @@ func TestCsvTableSnapsho(t *testing.T) {
 	t2, err := CSVTable(c2, key, nil)
 
 	var events []*Event
-	err = Snapshot(t2, func(e *Event) {
+	err = Snapshot(t2, func(e *Event) error {
 		events = append(events, e)
+		return nil
 	})
 	if err != nil {
 		t.Fatal(err)
@@ -311,11 +313,12 @@ func TestUnsortedCsvTableEvents(t *testing.T) {
 	t2, err := UnsortedCSVTable(c2, key, nil)
 
 	var events []*Event
-	err = DiffEvents(t1, t2, func(e *Event) {
+	err = DiffEvents(t1, t2, func(e *Event) error {
 		if e.Type == EventRowChanged || e.Type == EventRowRemoved {
 			e.Data = nil
 		}
 		events = append(events, e)
+		return nil
 	})
 	if err != nil {
 		t.Fatal(err)
@@ -335,8 +338,9 @@ func TestUnsortedCsvTableSnapshot(t *testing.T) {
 	t2, err := UnsortedCSVTable(c2, key, nil)
 
 	var events []*Event
-	err = Snapshot(t2, func(e *Event) {
+	err = Snapshot(t2, func(e *Event) error {
 		events = append(events, e)
+		return nil
 	})
 	if err != nil {
 		t.Fatal(err)
