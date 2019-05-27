@@ -11,6 +11,7 @@ import (
 
 	difftable "github.com/chop-dbhi/diff-table"
 	"github.com/lib/pq"
+	"github.com/linkedin/goavro"
 )
 
 func main() {
@@ -26,6 +27,9 @@ func main() {
 		csv2      string
 		csv2delim string
 		csv2sort  bool
+
+		avro1 string
+		avro2 string
 
 		url1    string
 		schema1 string
@@ -56,6 +60,9 @@ func main() {
 	flag.StringVar(&csv2, "csv2", "", "Path to CSV file.")
 	flag.StringVar(&csv2delim, "csv2.delim", ",", "CSV delimiter.")
 	flag.BoolVar(&csv2sort, "csv2.sort", false, "CSV requires sorting.")
+
+	flag.StringVar(&avro1, "avro1", "", "Path to Avro file.")
+	flag.StringVar(&avro2, "avro2", "", "Path to Avro file.")
 
 	flag.StringVar(&url1, "db", "", "Database 1 connection URL.")
 	flag.StringVar(&schema1, "schema", "", "Name of the first schema.")
@@ -240,6 +247,48 @@ func main() {
 		t2, err = difftable.SQLTable(rows2, key2, renameMap2)
 		if err != nil {
 			log.Printf("db2 table: %s", err)
+			return
+		}
+	}
+
+	if avro1 != "" {
+		f, err := os.Open(avro1)
+		if err != nil {
+			log.Printf("avro1 table: %s", err)
+			return
+		}
+		defer f.Close()
+
+		rdr, err := goavro.NewOCFReader(f)
+		if err != nil {
+			log.Printf("avro1 table: %s", err)
+			return
+		}
+
+		t1, err = difftable.AvroTable(rdr, key1, renameMap1)
+		if err != nil {
+			log.Printf("avro1 table: %s", err)
+			return
+		}
+	}
+
+	if avro2 != "" {
+		f, err := os.Open(avro2)
+		if err != nil {
+			log.Printf("avro2 table: %s", err)
+			return
+		}
+		defer f.Close()
+
+		rdr, err := goavro.NewOCFReader(f)
+		if err != nil {
+			log.Printf("avro2 table: %s", err)
+			return
+		}
+
+		t2, err = difftable.AvroTable(rdr, key2, renameMap2)
+		if err != nil {
+			log.Printf("avro2 table: %s", err)
 			return
 		}
 	}

@@ -8,19 +8,19 @@ GIT_BRANCH := $(shell git symbolic-ref -q --short HEAD)
 GIT_VERSION := $(shell git log -1 --pretty=format:"%h (%ci)")
 
 build:
-	go build -ldflags "-X \"main.buildVersion=$(GIT_VERSION)\"" \
+	GO111MODULE=on go build -ldflags "-X \"main.buildVersion=$(GIT_VERSION)\"" \
 		-o $(GOPATH)/bin/$(PROG_NAME) $(CMD_PATH)
 
 dist-build:
 	mkdir -p dist
 
-	GOOS=darwin go build -ldflags "-extldflags \"-static\" -X \"main.buildVersion=$(GIT_VERSION)\"" \
+	GO111MODULE=on GOOS=darwin go build -ldflags "-extldflags \"-static\" -X \"main.buildVersion=$(GIT_VERSION)\"" \
 		-o ./dist/darwin-amd64/$(PROG_NAME) $(CMD_PATH)
 
-	GOOS=linux go build -ldflags "-extldflags \"-static\" -X \"main.buildVersion=$(GIT_VERSION)\"" \
+	GO111MODULE=on GOOS=linux go build -ldflags "-extldflags \"-static\" -X \"main.buildVersion=$(GIT_VERSION)\"" \
 		-o ./dist/linux-amd64/$(PROG_NAME) $(CMD_PATH)
 
-	GOOS=windows go build -ldflags "-extldflags \"-static\" -X \"main.buildVersion=$(GIT_VERSION)\"" \
+	GO111MODULE=on GOOS=windows go build -ldflags "-extldflags \"-static\" -X \"main.buildVersion=$(GIT_VERSION)\"" \
 		-o ./dist/windows-amd64/$(PROG_NAME) $(CMD_PATH)
 
 dist-zip:
