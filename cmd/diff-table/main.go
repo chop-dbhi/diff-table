@@ -297,8 +297,8 @@ func main() {
 
 	// Snapshot the table.
 	if snapshot {
-		err := difftable.Snapshot(t1, func(e *difftable.Event) {
-			enc.Encode(e)
+		err := difftable.Snapshot(t1, func(e *difftable.Event) error {
+			return enc.Encode(e)
 		})
 		if err != nil {
 			log.Print("snapshot: %s", err)
@@ -308,7 +308,7 @@ func main() {
 
 	// Diff and produce events.
 	if events {
-		err := difftable.DiffEvents(t1, t2, func(e *difftable.Event) {
+		err := difftable.DiffEvents(t1, t2, func(e *difftable.Event) error {
 			// Elide the full data from output.
 			if e.Type == difftable.EventRowChanged || e.Type == difftable.EventRowRemoved {
 				if !fulldata {
@@ -316,7 +316,7 @@ func main() {
 				}
 			}
 
-			enc.Encode(e)
+			return enc.Encode(e)
 		})
 		if err != nil {
 			log.Printf("diff stream: %s", err)
